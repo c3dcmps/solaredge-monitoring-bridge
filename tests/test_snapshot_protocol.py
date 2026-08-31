@@ -10,11 +10,7 @@ import types
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-COMPONENT = (
-    Path(__file__).parents[1]
-    / "custom_components"
-    / "solaredge_one_bridge"
-)
+COMPONENT = Path(__file__).parents[1] / "custom_components" / "solaredge_one_bridge"
 
 
 def _load_module(name: str):

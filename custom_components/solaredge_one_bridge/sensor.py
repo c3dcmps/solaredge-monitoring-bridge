@@ -23,8 +23,8 @@ from .coordinator import SolarEdgeBridgeCoordinator
 DEVICE_INFO = DeviceInfo(
     identifiers={(DOMAIN, "bridge")},
     manufacturer="SolarEdge",
-    model="Local snapshot bridge",
-    name="SolarEdge Monitoring Bridge",
+    model="Monitoring data source",
+    name="SolarEdge Monitoring",
 )
 
 
@@ -203,4 +203,3 @@ class SolarEdgeStorageOperatingPlanSensor(
         if completeness is not None:
             attributes["complete"] = completeness
         return attributes
-

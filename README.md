@@ -1,55 +1,36 @@
 <p align="center">
-  <img src="assets/bridge-mark.svg" width="128" height="128" alt="Solar and battery bridge symbol">
+  <img src="assets/bridge-mark.svg" width="128" height="128" alt="Solar and battery monitoring symbol">
 </p>
 
 # SolarEdge Monitoring Bridge
 
-> **Pre-release / developer preview:** this repository currently contains the
-> Home Assistant client and an open snapshot protocol. The required companion
-> bridge service has **not** been released. This is not yet a general-purpose
-> HACS installation.
+A privacy-minimizing Home Assistant custom integration for whole-site SolarEdge
+solar, grid, consumption, and battery telemetry.
 
-SolarEdge Monitoring Bridge is a privacy-minimizing Home Assistant custom
-integration for importing whole-site solar, grid, consumption, and battery
-aggregates from a separately operated local bridge. It does not log in to a
-SolarEdge account and it contains no reverse-engineered portal endpoints,
-cookies, client identifiers, or credentials.
+It supports two read-only connection methods:
 
-The design keeps provider access outside Home Assistant and exposes only a
-small, versioned JSON contract on a local/private network. A companion may use
-a documented provider API, local gateway, or another authorized source, but it
-must normalize and sanitize its output before Home Assistant sees it.
+- **SolarEdge monitoring portal (experimental):** logs in directly with a
+  SolarEdge monitoring account and a numeric site ID.
+- **Local snapshot bridge:** consumes the documented, provider-neutral protocol
+  in [docs/snapshot-protocol.md](docs/snapshot-protocol.md).
+
+> [!WARNING]
+> Direct portal access uses SolarEdge's undocumented private web interface. It is
+> unofficial, is not endorsed by SolarEdge, and may stop working without notice.
+> Use it only with an account and site you are authorized to access. Multi-factor
+> authentication, federated sign-in, or a changed login page may prevent setup.
 
 ## Why this exists
 
-Home Assistant already has excellent SolarEdge integrations. This project is
-for the narrower case where an operator wants:
+Home Assistant already has excellent SolarEdge integrations. Prefer the built-in
+SolarEdge or a local Modbus integration when either meets your needs. This
+project covers the narrower case where an operator wants:
 
-- explicit import/export and battery charge/discharge direction entities;
-- cumulative whole-site energy entities suitable for the Energy dashboard;
-- a sanitized storage operating-plan label when an authorized source provides it;
-- per-field completeness and observation-time provenance; and
-- a strict local trust boundary between provider access and Home Assistant.
-
-If Home Assistant's built-in SolarEdge integration or a local Modbus integration
-meets your needs, prefer that simpler path.
-
-## Current status
-
-| Area | Status |
-|---|---|
-| Home Assistant config flow and sensors | Implemented |
-| Snapshot schema v1 and privacy allowlist | Implemented |
-| Response-size, redirect, endpoint, and freshness guards | Implemented |
-| Reauthentication, reconfiguration, and polling options | Implemented |
-| Redacted diagnostics | Implemented |
-| HACS/hassfest validation workflows | Implemented |
-| Public companion bridge | **Not released; installation blocker** |
-| Stable release and HACS default listing | **Not ready** |
-
-No release should be advertised as generally installable until a companion
-bridge with documented setup, authentication, upgrades, and support is
-available. An undocumented web portal is not an acceptable public dependency.
+- explicit grid import/export and battery charge/discharge direction;
+- cumulative whole-site energy counters suitable for the Energy dashboard;
+- a sanitized storage operating-plan label when available;
+- observation-time and per-field completeness provenance; and
+- strict rejection of provider identifiers and arbitrary response fields.
 
 ## Entities
 
@@ -63,23 +44,65 @@ incomplete fields are unavailable rather than guessed.
 - Lifetime production and consumption energy
 - Lifetime grid import and export energy
 - Lifetime battery charged and discharged energy
-- Storage operating-plan label, with bounded `active` and `block_count` attributes
+- Storage operating-plan label, with bounded `active` and `block_count`
+  attributes
 
-Power is expressed in W, energy in kWh, and state of energy in percent. Energy
-values must be lifetime or otherwise monotonically increasing counters; a
-current-day total is not valid for these entities.
+Power is expressed in W, energy in kWh, and state of energy in percent.
 
-## Snapshot protocol
+## Installation
 
-The integration performs an HTTP `GET` against a local/private endpoint and
-sends one header:
+### HACS custom repository
 
-```text
-X-SolarEdge-Bridge-Secret: <shared secret>
-```
+1. In HACS, add
+   `https://github.com/shogun301/solaredge-monitoring-bridge` as an
+   **Integration** custom repository.
+2. Install **SolarEdge Monitoring Bridge**.
+3. Restart Home Assistant.
+4. Add **SolarEdge Monitoring** under Settings > Devices & services.
 
-The response must be at most 64 KiB and implement schema version 1. A minimal
-synthetic response is:
+The repository is being prepared for HACS's default catalog. Until that upstream
+submission is accepted, the custom-repository step is required.
+
+### Manual
+
+Copy `custom_components/solaredge_one_bridge` into Home Assistant's
+`custom_components` directory, restart Home Assistant, and add the integration.
+
+## Portal setup
+
+Select **SolarEdge monitoring portal (experimental)** and enter:
+
+- the email and password used for the SolarEdge monitoring portal;
+- the numeric site ID for the site you are authorized to view; and
+- the site's IANA time-zone name, such as `America/Los_Angeles`.
+
+Home Assistant stores these values in its config-entry storage, as it does for
+other credentialed integrations. Credentials and site identifiers are redacted
+from diagnostics and never become entity state or attributes.
+
+The client is deliberately constrained:
+
+- authentication is sent only to exact SolarEdge login and monitoring hosts;
+- only a fixed read-only dashboard endpoint set can be called;
+- cross-host login forms, redirects, embedded URL credentials, and unsafe
+  redirects are rejected;
+- responses are bounded before parsing;
+- one authentication retry is allowed after a rejected session;
+- provider responses are recursively stripped of common secret and identifying
+  fields before normalization; and
+- Home Assistant retains only the aggregate snapshot allowlist.
+
+The integration polls every five minutes by default. Do not lower the interval
+unnecessarily; the portal is not a documented public API.
+
+## Local bridge setup
+
+Select **Compatible local snapshot bridge** and enter a private/local snapshot
+URL plus its high-entropy shared secret. The config flow refuses public
+fully-qualified hostnames, embedded URL credentials, query strings, fragments,
+and redirects. Single-label hostnames are allowed for add-on/container DNS.
+
+A minimal synthetic snapshot is:
 
 ```json
 {
@@ -103,59 +126,38 @@ synthetic response is:
 }
 ```
 
-The complete normative contract is in
+The complete contract is in
 [docs/snapshot-protocol.md](docs/snapshot-protocol.md).
-
-## Installation for protocol developers
-
-These steps are intentionally for developers operating their own compatible
-local bridge. There is no supported companion package yet.
-
-1. Copy `custom_components/solaredge_one_bridge` into Home Assistant's
-   `custom_components` directory.
-2. Restart Home Assistant.
-3. Add **SolarEdge Monitoring Bridge** from Settings > Devices & services.
-4. Enter a local/private snapshot URL and the same high-entropy shared secret
-   configured on the bridge.
-
-The config flow refuses public fully-qualified hostnames, embedded URL
-credentials, query strings, fragments, and redirects. Single-label hostnames
-are allowed for add-on and container DNS.
 
 ## Security and privacy
 
 - Only allowlisted aggregate fields are retained.
-- Unknown fields are ignored, including identifiers and arbitrary metadata.
-- The secret and endpoint are redacted from diagnostics.
-- Raw values are omitted from downloadable diagnostics.
-- HTTP redirects are rejected to prevent a local endpoint from forwarding the
-  authenticated request elsewhere.
+- Unknown fields are ignored, including site IDs, addresses, serial numbers,
+  credentials, cookies, tokens, and arbitrary metadata.
+- Credentials, site ID, local endpoint, and shared secret are redacted from
+  diagnostics.
+- Raw metric values and provider payloads are omitted from diagnostics.
 - Connected snapshots must be recent and timezone-aware.
-- Public TLS termination does not make a public endpoint acceptable; this
-  client is deliberately local-only.
+- Portal errors are deliberately non-sensitive.
 
-The shared-secret header protects against accidental local access. It is not a
-replacement for network isolation. Prefer loopback or a private container/add-on
-network and use HTTPS when the request crosses a network you do not fully trust.
-
-See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+Please read [SECURITY.md](SECURITY.md) before sharing logs or filing an issue.
 
 ## Development
 
 ```bash
-python -m pip install pytest aiohttp ruff
+python -m pip install pytest aiohttp ruff tzdata
 ruff check .
 pytest -q
+python scripts/privacy_scan.py
 ```
 
-GitHub Actions also runs HACS validation and Home Assistant hassfest. See
-[CONTRIBUTING.md](CONTRIBUTING.md) before proposing protocol changes.
+GitHub Actions also runs HACS validation, Home Assistant hassfest, and gitleaks.
 
 ## Trademark and affiliation
 
 This community project is not affiliated with, sponsored by, or endorsed by
 SolarEdge Technologies. SolarEdge is a trademark of its respective owner. The
-project's bridge artwork is original and does not reproduce the SolarEdge logo.
+project artwork is original and does not reproduce the SolarEdge logo.
 
 ## License
 

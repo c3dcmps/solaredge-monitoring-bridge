@@ -24,9 +24,7 @@ def render(size: int) -> Image.Image:
         radius=round(52 * scale),
         fill="#102a43",
     )
-    draw.ellipse(
-        (44 * scale, 44 * scale, 92 * scale, 92 * scale), fill="#f6c945"
-    )
+    draw.ellipse((44 * scale, 44 * scale, 92 * scale, 92 * scale), fill="#f6c945")
     ray_pairs = (
         ((68, 24), (68, 36)),
         ((68, 100), (68, 112)),
@@ -93,9 +91,7 @@ def render(size: int) -> Image.Image:
         outline="#d9e2ec",
         width=round(8 * scale),
     )
-    draw.rectangle(
-        (175 * scale, 190 * scale, 185 * scale, 206 * scale), fill="#d9e2ec"
-    )
+    draw.rectangle((175 * scale, 190 * scale, 185 * scale, 206 * scale), fill="#d9e2ec")
     draw.line(
         _points(scale, [(107, 198), (158, 198)]),
         fill="#4db6ac",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
+from typing import Protocol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -13,12 +14,19 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .client import (
     BridgeAuthenticationError,
     BridgeError,
-    SolarEdgeBridgeClient,
 )
 from .const import DEFAULT_UPDATE_INTERVAL, DOMAIN
 from .model import SolarEdgeSnapshot
+from .portal import SolarEdgePortalAuthenticationError, SolarEdgePortalError
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class SnapshotClient(Protocol):
+    """Common boundary implemented by portal and local bridge clients."""
+
+    async def async_get_snapshot(self) -> SolarEdgeSnapshot:
+        """Return a validated snapshot."""
 
 
 class SolarEdgeBridgeCoordinator(DataUpdateCoordinator[SolarEdgeSnapshot]):
@@ -28,7 +36,7 @@ class SolarEdgeBridgeCoordinator(DataUpdateCoordinator[SolarEdgeSnapshot]):
         self,
         hass: HomeAssistant,
         entry: ConfigEntry,
-        client: SolarEdgeBridgeClient,
+        client: SnapshotClient,
         *,
         update_interval: timedelta = DEFAULT_UPDATE_INTERVAL,
     ) -> None:
@@ -44,8 +52,7 @@ class SolarEdgeBridgeCoordinator(DataUpdateCoordinator[SolarEdgeSnapshot]):
     async def _async_update_data(self) -> SolarEdgeSnapshot:
         try:
             return await self._client.async_get_snapshot()
-        except BridgeAuthenticationError as err:
-            raise ConfigEntryAuthFailed("bridge authentication failed") from err
-        except BridgeError as err:
+        except (BridgeAuthenticationError, SolarEdgePortalAuthenticationError) as err:
+            raise ConfigEntryAuthFailed("SolarEdge authentication failed") from err
+        except (BridgeError, SolarEdgePortalError) as err:
             raise UpdateFailed(str(err)) from err
-

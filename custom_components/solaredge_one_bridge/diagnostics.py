@@ -8,9 +8,22 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import SolarEdgeBridgeConfigEntry
-from .const import CONF_ENDPOINT, CONF_SHARED_SECRET
+from .const import (
+    CONF_ENDPOINT,
+    CONF_PASSWORD,
+    CONF_SHARED_SECRET,
+    CONF_SITE_ID,
+    CONF_USERNAME,
+)
 
-TO_REDACT = {CONF_ENDPOINT, CONF_SHARED_SECRET, "unique_id"}
+TO_REDACT = {
+    CONF_ENDPOINT,
+    CONF_PASSWORD,
+    CONF_SHARED_SECRET,
+    CONF_SITE_ID,
+    CONF_USERNAME,
+    "unique_id",
+}
 
 
 async def async_get_config_entry_diagnostics(
@@ -33,4 +46,3 @@ async def async_get_config_entry_diagnostics(
             "operating_plan_available": snapshot.storage_operating_plan is not None,
         },
     }
-

@@ -11,13 +11,13 @@ COMPONENT = ROOT / "custom_components" / "solaredge_one_bridge"
 SKIP_DIRECTORIES = {".git", ".pytest_cache", ".ruff_cache", ".venv", "__pycache__"}
 
 
-def test_manifest_is_hacs_shaped_and_prerelease() -> None:
+def test_manifest_is_hacs_shaped_and_installable() -> None:
     manifest = json.loads((COMPONENT / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["domain"] == "solaredge_one_bridge"
     assert manifest["config_flow"] is True
-    assert manifest["iot_class"] == "local_polling"
+    assert manifest["iot_class"] == "cloud_polling"
     assert manifest["requirements"] == []
-    assert "beta" in manifest["version"]
+    assert manifest["version"] == "0.1.0"
     assert manifest["codeowners"]
 
 
@@ -53,10 +53,7 @@ def test_no_environment_specific_literals_or_private_keys() -> None:
     )
     private_key_header = re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")
     for path in ROOT.rglob("*"):
-        if (
-            not path.is_file()
-            or SKIP_DIRECTORIES.intersection(path.parts)
-        ):
+        if not path.is_file() or SKIP_DIRECTORIES.intersection(path.parts):
             continue
         if path.suffix.lower() in {".png", ".pyc"}:
             continue
@@ -65,12 +62,18 @@ def test_no_environment_specific_literals_or_private_keys() -> None:
         assert not private_key_header.search(text), path
 
 
-def test_integration_contains_no_provider_http_implementation() -> None:
-    source = "\n".join(
-        path.read_text(encoding="utf-8") for path in COMPONENT.rglob("*.py")
+def test_portal_implementation_is_explicitly_fixed_and_bridge_is_retained() -> None:
+    portal = (COMPONENT / "portal.py").read_text(encoding="utf-8")
+    config_flow = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+    assert '_LOGIN_HOST = "login.solaredge.com"' in portal
+    assert '_MONITORING_HOST = "monitoring.solaredge.com"' in portal
+    assert (
+        '_DASHBOARD_BASE_URL = "https://monitoring.solaredge.com/services/dashboard"'
+        in portal
     )
-    assert "BRIDGE_SECRET_HEADER" in source
-    assert "async_get_snapshot" in source
-    assert "client_id" not in source.casefold()
-    assert "oauth/token" not in source.casefold()
-    assert "monitoring.solaredge" not in source.casefold()
+    assert "def request(" not in portal
+    assert "MODE_PORTAL" in config_flow
+    assert "MODE_BRIDGE" in config_flow
+    assert "BRIDGE_SECRET_HEADER" in (COMPONENT / "const.py").read_text(
+        encoding="utf-8"
+    )

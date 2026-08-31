@@ -18,9 +18,7 @@ from .const import (
 )
 from .model import InvalidSnapshot, SolarEdgeSnapshot, parse_snapshot
 
-LOCAL_HOSTNAME_PATTERN = re.compile(
-    r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
-)
+LOCAL_HOSTNAME_PATTERN = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?")
 PRIVATE_NETWORKS = tuple(
     ipaddress.ip_network(value)
     for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7")

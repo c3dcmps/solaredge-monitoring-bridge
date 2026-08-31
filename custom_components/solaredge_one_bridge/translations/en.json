@@ -1,68 +1,123 @@
 {
+  "title": "SolarEdge Monitoring",
   "config": {
     "abort": {
       "reauth_successful": "Authentication was updated successfully.",
-      "reconfigure_successful": "Bridge configuration was updated successfully.",
-      "single_instance_allowed": "Only one SolarEdge Monitoring Bridge can be configured."
+      "reconfigure_successful": "SolarEdge configuration was updated successfully.",
+      "single_instance_allowed": "Only one SolarEdge Monitoring integration can be configured."
     },
     "error": {
-      "cannot_connect": "Unable to connect or the snapshot is invalid or stale",
-      "invalid_auth": "The shared secret was rejected",
+      "cannot_connect": "Unable to connect or the returned data is invalid or stale",
+      "invalid_auth": "SolarEdge rejected the credentials",
       "invalid_endpoint": "Enter an HTTP(S) URL on a loopback, private, link-local, or single-label local host"
     },
     "step": {
+      "user": {
+        "title": "Choose connection method",
+        "description": "Direct portal access is unofficial, read-only, and can stop working if SolarEdge changes its private interface.",
+        "menu_options": {
+          "portal": "SolarEdge monitoring portal (experimental)",
+          "bridge": "Compatible local snapshot bridge"
+        }
+      },
+      "portal": {
+        "title": "SolarEdge monitoring portal (experimental)",
+        "description": "Uses an undocumented SolarEdge web interface. Your credentials stay in Home Assistant. Multi-factor and federated sign-in flows may not work.",
+        "data": {
+          "username": "Portal email",
+          "password": "Portal password",
+          "site_id": "Numeric site ID",
+          "time_zone": "Site time zone"
+        }
+      },
+      "bridge": {
+        "title": "SolarEdge local bridge",
+        "description": "Connect to a separately installed local bridge implementing snapshot protocol version 1.",
+        "data": {
+          "endpoint": "Local snapshot endpoint",
+          "shared_secret": "Shared secret"
+        }
+      },
       "reauth_confirm": {
-        "data": {"shared_secret": "New shared secret"},
-        "description": "Enter the shared secret currently configured by the local bridge.",
-        "title": "Reauthenticate bridge"
+        "title": "Reauthenticate SolarEdge",
+        "description": "Enter the credentials currently accepted by the configured source.",
+        "data": {
+          "username": "Portal email",
+          "password": "Portal password",
+          "shared_secret": "New shared secret"
+        }
       },
       "reconfigure": {
+        "title": "Reconfigure SolarEdge",
+        "description": "Update the configured source without changing connection methods.",
         "data": {
+          "username": "Portal email",
+          "password": "Portal password",
+          "site_id": "Numeric site ID",
+          "time_zone": "Site time zone",
           "endpoint": "Local snapshot endpoint",
           "shared_secret": "Shared secret"
-        },
-        "description": "Change the private local endpoint or rotate its shared secret.",
-        "title": "Reconfigure bridge"
-      },
-      "user": {
-        "data": {
-          "endpoint": "Local snapshot endpoint",
-          "shared_secret": "Shared secret"
-        },
-        "description": "Connect to a separately installed local bridge implementing snapshot protocol version 1.",
-        "title": "SolarEdge Monitoring Bridge"
+        }
       }
     }
   },
   "options": {
     "step": {
       "init": {
+        "title": "Polling options",
+        "description": "Tune polling, request timeout, and freshness limits. The defaults are recommended.",
         "data": {
           "max_snapshot_age": "Maximum snapshot age (seconds)",
           "poll_interval": "Polling interval (seconds)",
           "request_timeout": "Request timeout (seconds)"
-        },
-        "description": "Tune polling and freshness limits. The defaults are recommended.",
-        "title": "Bridge polling options"
+        }
       }
     }
   },
   "entity": {
     "sensor": {
-      "battery_charge_energy_kwh": {"name": "Battery energy charged"},
-      "battery_charge_power_w": {"name": "Battery charging power"},
-      "battery_discharge_energy_kwh": {"name": "Battery energy discharged"},
-      "battery_discharge_power_w": {"name": "Battery discharging power"},
-      "battery_state_of_energy_pct": {"name": "Battery state of energy"},
-      "consumption_energy_kwh": {"name": "Consumption energy"},
-      "consumption_power_w": {"name": "Consumption power"},
-      "grid_export_energy_kwh": {"name": "Grid export energy"},
-      "grid_export_power_w": {"name": "Grid export power"},
-      "grid_import_energy_kwh": {"name": "Grid import energy"},
-      "grid_import_power_w": {"name": "Grid import power"},
-      "production_energy_kwh": {"name": "Production energy"},
-      "production_power_w": {"name": "Production power"},
-      "storage_operating_plan": {"name": "Storage operating plan"}
+      "battery_charge_energy_kwh": {
+        "name": "Battery energy charged"
+      },
+      "battery_charge_power_w": {
+        "name": "Battery charging power"
+      },
+      "battery_discharge_energy_kwh": {
+        "name": "Battery energy discharged"
+      },
+      "battery_discharge_power_w": {
+        "name": "Battery discharging power"
+      },
+      "battery_state_of_energy_pct": {
+        "name": "Battery state of energy"
+      },
+      "consumption_energy_kwh": {
+        "name": "Consumption energy"
+      },
+      "consumption_power_w": {
+        "name": "Consumption power"
+      },
+      "grid_export_energy_kwh": {
+        "name": "Grid export energy"
+      },
+      "grid_export_power_w": {
+        "name": "Grid export power"
+      },
+      "grid_import_energy_kwh": {
+        "name": "Grid import energy"
+      },
+      "grid_import_power_w": {
+        "name": "Grid import power"
+      },
+      "production_energy_kwh": {
+        "name": "Production energy"
+      },
+      "production_power_w": {
+        "name": "Production power"
+      },
+      "storage_operating_plan": {
+        "name": "Storage operating plan"
+      }
     }
   }
 }

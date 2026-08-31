@@ -6,6 +6,11 @@ DOMAIN = "solaredge_one_bridge"
 
 CONF_ENDPOINT = "endpoint"
 CONF_SHARED_SECRET = "shared_secret"
+CONF_MODE = "mode"
+CONF_USERNAME = "username"
+CONF_PASSWORD = "password"
+CONF_SITE_ID = "site_id"
+CONF_TIME_ZONE = "time_zone"
 CONF_MAX_SNAPSHOT_AGE = "max_snapshot_age"
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_REQUEST_TIMEOUT = "request_timeout"
@@ -28,3 +33,5 @@ MAX_FUTURE_SKEW_SECONDS = 300
 
 BRIDGE_SECRET_HEADER = "X-SolarEdge-Bridge-Secret"
 
+MODE_PORTAL = "portal"
+MODE_BRIDGE = "bridge"

@@ -14,14 +14,22 @@ from .client import SolarEdgeBridgeClient
 from .const import (
     CONF_ENDPOINT,
     CONF_MAX_SNAPSHOT_AGE,
+    CONF_MODE,
+    CONF_PASSWORD,
     CONF_POLL_INTERVAL,
     CONF_REQUEST_TIMEOUT,
     CONF_SHARED_SECRET,
+    CONF_SITE_ID,
+    CONF_TIME_ZONE,
+    CONF_USERNAME,
     DEFAULT_MAX_SNAPSHOT_AGE_SECONDS,
     DEFAULT_POLL_INTERVAL_SECONDS,
     DEFAULT_REQUEST_TIMEOUT_SECONDS,
+    MODE_BRIDGE,
+    MODE_PORTAL,
 )
 from .coordinator import SolarEdgeBridgeCoordinator
+from .portal_client import SolarEdgePortalSnapshotClient
 
 PLATFORMS = [Platform.SENSOR]
 
@@ -31,25 +39,38 @@ SolarEdgeBridgeConfigEntry = ConfigEntry[SolarEdgeBridgeCoordinator]
 async def async_setup_entry(
     hass: HomeAssistant, entry: SolarEdgeBridgeConfigEntry
 ) -> bool:
-    """Set up a local bridge config entry."""
+    """Set up an unofficial portal or local bridge config entry."""
     try:
-        client = SolarEdgeBridgeClient(
-            async_get_clientsession(hass),
-            entry.data[CONF_ENDPOINT],
-            entry.data[CONF_SHARED_SECRET],
-            timeout_seconds=int(
-                entry.options.get(
-                    CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT_SECONDS
-                )
-            ),
-            max_snapshot_age_seconds=int(
-                entry.options.get(
-                    CONF_MAX_SNAPSHOT_AGE, DEFAULT_MAX_SNAPSHOT_AGE_SECONDS
-                )
-            ),
+        timeout_seconds = int(
+            entry.options.get(CONF_REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT_SECONDS)
         )
+        max_snapshot_age_seconds = int(
+            entry.options.get(CONF_MAX_SNAPSHOT_AGE, DEFAULT_MAX_SNAPSHOT_AGE_SECONDS)
+        )
+        session = async_get_clientsession(hass)
+        mode = entry.data.get(CONF_MODE, MODE_BRIDGE)
+        if mode == MODE_PORTAL:
+            client = SolarEdgePortalSnapshotClient(
+                session,
+                username=entry.data[CONF_USERNAME],
+                password=entry.data[CONF_PASSWORD],
+                site_id=entry.data[CONF_SITE_ID],
+                timezone_name=entry.data[CONF_TIME_ZONE],
+                timeout_seconds=timeout_seconds,
+                max_snapshot_age_seconds=max_snapshot_age_seconds,
+            )
+        elif mode == MODE_BRIDGE:
+            client = SolarEdgeBridgeClient(
+                session,
+                entry.data[CONF_ENDPOINT],
+                entry.data[CONF_SHARED_SECRET],
+                timeout_seconds=timeout_seconds,
+                max_snapshot_age_seconds=max_snapshot_age_seconds,
+            )
+        else:
+            raise ValueError("unsupported connection mode")
     except ValueError as err:
-        raise ConfigEntryNotReady("bridge configuration is invalid") from err
+        raise ConfigEntryNotReady("SolarEdge configuration is invalid") from err
 
     coordinator = SolarEdgeBridgeCoordinator(
         hass,
@@ -57,9 +78,7 @@ async def async_setup_entry(
         client,
         update_interval=timedelta(
             seconds=int(
-                entry.options.get(
-                    CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_SECONDS
-                )
+                entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_SECONDS)
             )
         ),
     )

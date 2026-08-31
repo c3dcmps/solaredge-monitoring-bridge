@@ -22,10 +22,7 @@ def main() -> int:
     """Scan text files without printing their contents."""
     findings: list[str] = []
     for path in ROOT.rglob("*"):
-        if (
-            not path.is_file()
-            or SKIP_DIRECTORIES.intersection(path.parts)
-        ):
+        if not path.is_file() or SKIP_DIRECTORIES.intersection(path.parts):
             continue
         if path.suffix.casefold() in SKIP_SUFFIXES:
             continue
