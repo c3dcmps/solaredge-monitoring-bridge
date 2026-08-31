@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 — 2026-08-31
+
+- Added repository-level 256/512-pixel PNG exports of the original project mark.
+
 ## 0.1.0 — 2026-08-31
 
 - Added experimental direct, read-only SolarEdge monitoring-portal access.
@@ -17,4 +21,3 @@
 
 The direct portal is unofficial and may stop working if SolarEdge changes its
 private web interface.
-

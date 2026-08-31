@@ -158,8 +158,10 @@ GitHub Actions also runs HACS validation, Home Assistant hassfest, and gitleaks.
 This community project is not affiliated with, sponsored by, or endorsed by
 SolarEdge Technologies. SolarEdge is a trademark of its respective owner. The
 project artwork is original and does not reproduce the SolarEdge logo.
+The editable SVG mark and 256/512-pixel PNG exports are included under
+`assets/`; Home Assistant-ready copies are bundled in the integration's
+`brand/` directory.
 
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
-
