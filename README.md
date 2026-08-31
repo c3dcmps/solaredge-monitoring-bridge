@@ -4,8 +4,8 @@
 
 # SolarEdge Monitoring Bridge
 
-A privacy-minimizing Home Assistant custom integration for whole-site SolarEdge
-solar, grid, consumption, and battery telemetry.
+A Home Assistant custom integration for whole-site SolarEdge solar, grid,
+consumption, and battery telemetry.
 
 It supports two read-only connection methods:
 
