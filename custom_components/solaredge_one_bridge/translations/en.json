@@ -14,7 +14,7 @@
     "step": {
       "user": {
         "title": "Choose connection method",
-        "description": "Direct portal access is unofficial, read-only, and can stop working if SolarEdge changes its private interface.",
+        "description": "Connect with any SolarEdge monitoring account that can view the site; site ownership and an API key are not required. Portal access is unofficial and read-only.",
         "menu_options": {
           "portal": "SolarEdge monitoring portal (experimental)",
           "bridge": "Compatible local snapshot bridge"
@@ -22,7 +22,7 @@
       },
       "portal": {
         "title": "SolarEdge monitoring portal (experimental)",
-        "description": "Uses an undocumented SolarEdge web interface. Your credentials stay in Home Assistant. Multi-factor and federated sign-in flows may not work.",
+        "description": "Use any SolarEdge monitoring account that can view the site; ownership is not required. This relies on an undocumented web interface, so multi-factor or federated sign-in may not work.",
         "data": {
           "username": "Portal email",
           "password": "Portal password",
@@ -121,4 +121,3 @@
     }
   }
 }
-

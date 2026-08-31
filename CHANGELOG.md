@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2 — 2026-08-31
+
+- Led the repository and setup flow with the main benefit: a monitoring account
+  with permission to view the site is sufficient; site ownership and an API key
+  are not required.
+- Replaced implementation-oriented public copy with direct descriptions of the
+  available telemetry and connection choices.
+
 ## 0.1.1 — 2026-08-31
 
 - Added repository-level 256/512-pixel PNG exports of the original project mark.

@@ -13,8 +13,8 @@ It supports two read-only connection methods:
 - **SolarEdge monitoring portal (experimental):** logs in directly with any
   SolarEdge monitoring account that can access the site and a numeric site ID;
   the account does not need to own the site.
-- **Local snapshot bridge:** consumes the documented, provider-neutral protocol
-  in [docs/snapshot-protocol.md](docs/snapshot-protocol.md).
+- **Local snapshot bridge:** consumes the documented protocol in
+  [docs/snapshot-protocol.md](docs/snapshot-protocol.md).
 
 > [!WARNING]
 > Direct portal access uses SolarEdge's undocumented private web interface. It is
@@ -22,17 +22,23 @@ It supports two read-only connection methods:
 > Use it only with an account and site you are authorized to access. Multi-factor
 > authentication, federated sign-in, or a changed login page may prevent setup.
 
-## Why this exists
+## Why this integration
 
-Home Assistant already has excellent SolarEdge integrations. Prefer the built-in
-SolarEdge or a local Modbus integration when either meets your needs. This
-project covers the narrower case where an operator wants:
+The portal connection fills a common access gap: you can view a site in
+SolarEdge Monitoring, but you do not own the site and may not have API
+credentials or local inverter access. Any monitoring account with permission to
+view the site is sufficient.
+
+From that access, the integration exposes:
 
 - explicit grid import/export and battery charge/discharge direction;
 - cumulative whole-site energy counters suitable for the Energy dashboard;
-- a sanitized storage operating-plan label when available;
-- observation-time and per-field completeness provenance; and
-- strict rejection of provider identifiers and arbitrary response fields.
+- a storage operating-plan label when available; and
+- observation time and per-field completeness information.
+
+If you have official API credentials or local Modbus access, those documented
+connection methods remain preferable. The portal option covers read-only access
+when those methods are unavailable.
 
 ## Entities
 
@@ -62,8 +68,8 @@ Power is expressed in W, energy in kWh, and state of energy in percent.
 3. Restart Home Assistant.
 4. Add **SolarEdge Monitoring** under Settings > Devices & services.
 
-The repository is being prepared for HACS's default catalog. Until that upstream
-submission is accepted, the custom-repository step is required.
+An inclusion request is pending for HACS's default catalog. Until it is
+accepted, the custom-repository step is required.
 
 ### Manual
 
