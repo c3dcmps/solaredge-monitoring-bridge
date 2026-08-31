@@ -4,13 +4,15 @@
 
 # SolarEdge Monitoring Bridge
 
-A Home Assistant custom integration for whole-site SolarEdge solar, grid,
-consumption, and battery telemetry.
+Read whole-site SolarEdge solar, grid, consumption, and battery telemetry in
+Home Assistant using any monitoring account with site access—site ownership is
+not required.
 
 It supports two read-only connection methods:
 
-- **SolarEdge monitoring portal (experimental):** logs in directly with a
-  SolarEdge monitoring account and a numeric site ID.
+- **SolarEdge monitoring portal (experimental):** logs in directly with any
+  SolarEdge monitoring account that can access the site and a numeric site ID;
+  the account does not need to own the site.
 - **Local snapshot bridge:** consumes the documented, provider-neutral protocol
   in [docs/snapshot-protocol.md](docs/snapshot-protocol.md).
 
