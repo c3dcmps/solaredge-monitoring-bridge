@@ -61,6 +61,8 @@ Power is expressed in W, energy in kWh, and state of energy in percent.
 
 ### HACS custom repository
 
+[![Open your Home Assistant instance and open a repository inside HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=shogun301&repository=solaredge-monitoring-bridge&category=integration)
+
 1. In HACS, add
    `https://github.com/shogun301/solaredge-monitoring-bridge` as an
    **Integration** custom repository.
