@@ -17,7 +17,7 @@ def test_manifest_is_hacs_shaped_and_installable() -> None:
     assert manifest["config_flow"] is True
     assert manifest["iot_class"] == "cloud_polling"
     assert manifest["requirements"] == []
-    assert manifest["version"] == "0.1.2"
+    assert manifest["version"] == "0.1.3"
     assert manifest["codeowners"]
 
 

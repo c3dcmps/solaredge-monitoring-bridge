@@ -5,9 +5,8 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from typing import Any
-from zoneinfo import ZoneInfo
 
 import aiohttp
 
@@ -27,7 +26,7 @@ class SolarEdgePortalSnapshotClient:
         username: str,
         password: str,
         site_id: str,
-        timezone_name: str,
+        time_zone: tzinfo,
         timeout_seconds: int,
         max_snapshot_age_seconds: int,
     ) -> None:
@@ -35,11 +34,11 @@ class SolarEdgePortalSnapshotClient:
             username=username,
             password=password,
             site_id=site_id,
-            timezone_name=timezone_name,
+            time_zone=time_zone,
             timeout_seconds=float(timeout_seconds),
         )
         self._portal = SolarEdgePortalClient(config, session=session)
-        self._timezone_name = timezone_name
+        self._time_zone = time_zone
         self._max_snapshot_age_seconds = max_snapshot_age_seconds
         self._lifetime_cache: tuple[float, dict[str, Any]] | None = None
         self._lifetime_lock = asyncio.Lock()
@@ -49,7 +48,7 @@ class SolarEdgePortalSnapshotClient:
         flow, lifetime = await asyncio.gather(
             self._portal.live_power_flow(), self._async_lifetime_energy()
         )
-        payload = _build_snapshot_payload(flow, lifetime, self._timezone_name)
+        payload = _build_snapshot_payload(flow, lifetime, self._time_zone)
         snapshot = parse_snapshot(payload)
         snapshot.validate_freshness(self._max_snapshot_age_seconds)
         return snapshot
@@ -89,7 +88,7 @@ def _component_text(component: Any, *keys: str) -> str:
     return ""
 
 
-def _provider_observed_at(value: Any, timezone_name: str) -> str:
+def _provider_observed_at(value: Any, time_zone: tzinfo) -> str:
     """Normalize provider local timestamps to timezone-aware UTC timestamps."""
     if isinstance(value, str) and value.strip():
         normalized = value.strip().replace("Z", "+00:00")
@@ -99,7 +98,7 @@ def _provider_observed_at(value: Any, timezone_name: str) -> str:
             pass
         else:
             if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=ZoneInfo(timezone_name))
+                parsed = parsed.replace(tzinfo=time_zone)
             return parsed.astimezone(UTC).isoformat()
     return datetime.now(UTC).isoformat()
 
@@ -107,7 +106,7 @@ def _provider_observed_at(value: Any, timezone_name: str) -> str:
 def _build_snapshot_payload(
     flow: Mapping[str, Any],
     lifetime: Mapping[str, Any],
-    timezone_name: str,
+    time_zone: tzinfo,
 ) -> dict[str, Any]:
     """Map sanitized portal summaries into the provider-neutral contract."""
     components = flow.get("components", {})
@@ -213,7 +212,7 @@ def _build_snapshot_payload(
         "connected": True,
         "provider": "solaredge_monitoring_portal",
         "observed_at": _provider_observed_at(
-            flow.get("last_update_time"), timezone_name
+            flow.get("last_update_time"), time_zone
         ),
         "site": {key: value for key, value in site.items() if value is not None},
         "completeness": {key: value is not None for key, value in site.items()},

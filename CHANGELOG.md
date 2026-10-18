@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.3 — 2026-10-18
+
+- Resolve portal time zones asynchronously with Home Assistant's cached helper
+  during configuration validation and entry setup, keeping time-zone database
+  reads off the event loop.
+- Reuse the resolved time zone for energy date windows and snapshot timestamps,
+  preserving daylight-saving behavior and the stored configuration format.
+
 ## 0.1.2 — 2026-08-31
 
 - Led the repository and setup flow with the main benefit: a monitoring account

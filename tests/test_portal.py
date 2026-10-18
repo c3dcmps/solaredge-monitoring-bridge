@@ -11,6 +11,7 @@ import unittest
 from datetime import UTC, date, datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
+from zoneinfo import ZoneInfo
 
 COMPONENT = Path(__file__).parents[1] / "custom_components" / "solaredge_one_bridge"
 PACKAGE = "solaredge_one_bridge"
@@ -121,7 +122,7 @@ class PortalTestCase(unittest.TestCase):
             username="user@example.test",
             password="correct horse battery staple",
             site_id="1234567",
-            timezone_name="America/Los_Angeles",
+            time_zone=ZoneInfo("America/Los_Angeles"),
             cache_ttl_seconds=60,
         )
 
@@ -130,11 +131,28 @@ class ConfigurationAndLoginTests(PortalTestCase):
     def test_site_id_timezone_and_response_limits_are_validated(self) -> None:
         for site_id in ("../1", "abc", "1?x=2"):
             with self.assertRaises(ValueError):
-                SolarEdgePortalConfig("u", "p", site_id, "America/Los_Angeles")
+                SolarEdgePortalConfig("u", "p", site_id, UTC)
         with self.assertRaises(ValueError):
             SolarEdgePortalConfig("u", "p", "1", "Not/A_Zone")
         with self.assertRaises(ValueError):
-            SolarEdgePortalConfig("u", "p", "1", "UTC", max_response_bytes=100)
+            SolarEdgePortalConfig("u", "p", "1", UTC, max_response_bytes=100)
+
+    def test_local_dates_follow_daylight_saving_midnight_boundaries(self) -> None:
+        for timestamp, expected in (
+            ("2026-03-08T07:59:59+00:00", date(2026, 3, 7)),
+            ("2026-03-08T08:00:00+00:00", date(2026, 3, 8)),
+            ("2026-03-09T06:59:59+00:00", date(2026, 3, 8)),
+            ("2026-03-09T07:00:00+00:00", date(2026, 3, 9)),
+            ("2026-11-02T07:59:59+00:00", date(2026, 11, 1)),
+            ("2026-11-02T08:00:00+00:00", date(2026, 11, 2)),
+        ):
+            with self.subTest(timestamp=timestamp):
+                self.assertEqual(
+                    portal_module._local_date(
+                        datetime.fromisoformat(timestamp), self.config.time_zone
+                    ),
+                    expected,
+                )
 
     def test_login_uses_s256_pkce_exact_hosts_and_expected_exchange(self) -> None:
         login_page = (

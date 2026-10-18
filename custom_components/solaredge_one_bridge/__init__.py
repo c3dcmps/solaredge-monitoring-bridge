@@ -9,6 +9,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
 
 from .client import SolarEdgeBridgeClient
 from .const import (
@@ -50,12 +51,15 @@ async def async_setup_entry(
         session = async_get_clientsession(hass)
         mode = entry.data.get(CONF_MODE, MODE_BRIDGE)
         if mode == MODE_PORTAL:
+            time_zone = await dt_util.async_get_time_zone(entry.data[CONF_TIME_ZONE])
+            if time_zone is None:
+                raise ValueError("SolarEdge portal timezone is invalid")
             client = SolarEdgePortalSnapshotClient(
                 session,
                 username=entry.data[CONF_USERNAME],
                 password=entry.data[CONF_PASSWORD],
                 site_id=entry.data[CONF_SITE_ID],
-                timezone_name=entry.data[CONF_TIME_ZONE],
+                time_zone=time_zone,
                 timeout_seconds=timeout_seconds,
                 max_snapshot_age_seconds=max_snapshot_age_seconds,
             )

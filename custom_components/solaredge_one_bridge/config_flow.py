@@ -9,6 +9,7 @@ from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import dt as dt_util
 
 from .client import (
     BridgeAuthenticationError,
@@ -69,11 +70,14 @@ async def _async_validate_portal(
     timezone_name: str,
 ) -> None:
     """Validate portal credentials against one fixed read-only endpoint."""
+    time_zone = await dt_util.async_get_time_zone(timezone_name)
+    if time_zone is None:
+        raise ValueError("SolarEdge portal timezone is invalid")
     config = SolarEdgePortalConfig(
         username=username,
         password=password,
         site_id=site_id,
-        timezone_name=timezone_name,
+        time_zone=time_zone,
         timeout_seconds=DEFAULT_REQUEST_TIMEOUT_SECONDS,
     )
     client = SolarEdgePortalClient(config, session=async_get_clientsession(hass))

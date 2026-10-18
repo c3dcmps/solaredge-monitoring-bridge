@@ -16,10 +16,9 @@ import secrets
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urljoin, urlsplit
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import aiohttp
 
@@ -102,7 +101,7 @@ class SolarEdgePortalConfig:
     username: str
     password: str
     site_id: str
-    timezone_name: str
+    time_zone: tzinfo
     timeout_seconds: float = 20.0
     cache_ttl_seconds: float = 60.0
     max_response_bytes: int = _MAX_RESPONSE_BYTES
@@ -111,10 +110,8 @@ class SolarEdgePortalConfig:
         if not self.username or not self.password:
             raise ValueError("SolarEdge portal credentials are required")
         _validate_site_id(self.site_id)
-        try:
-            ZoneInfo(self.timezone_name)
-        except ZoneInfoNotFoundError as exc:
-            raise ValueError("SolarEdge portal timezone is invalid") from exc
+        if not isinstance(self.time_zone, tzinfo):
+            raise ValueError("SolarEdge portal timezone is invalid")
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
         if self.cache_ttl_seconds < 0:
@@ -204,7 +201,7 @@ class SolarEdgePortalClient:
         result = await self.energy_history(start_date, end_date, chart_time_unit="days")
         result["window_type"] = "completed_local_dates"
         result["expected_days"] = days
-        result["timezone"] = self.config.timezone_name
+        result["timezone"] = str(self.config.time_zone)
         return result
 
     async def current_day_energy_summary(
@@ -215,7 +212,7 @@ class SolarEdgePortalClient:
             selected, selected, chart_time_unit="quarter-hours"
         )
         result["window_type"] = "current_local_date"
-        result["timezone"] = self.config.timezone_name
+        result["timezone"] = str(self.config.time_zone)
         return result
 
     async def lifetime_energy_summary(self) -> dict[str, Any]:
@@ -226,7 +223,7 @@ class SolarEdgePortalClient:
             start_date, end_date, chart_time_unit="years", allow_lifetime=True
         )
         result["window_type"] = "lifetime_through_current_local_date"
-        result["timezone"] = self.config.timezone_name
+        result["timezone"] = str(self.config.time_zone)
         return result
 
     async def energy_history(
@@ -692,7 +689,7 @@ class SolarEdgePortalClient:
         self._last_login_monotonic = 0.0
 
     def _local_today(self) -> date:
-        return _local_date(self._now(), self.config.timezone_name)
+        return _local_date(self._now(), self.config.time_zone)
 
 
 def _normalize_power_payload(payload: Any) -> dict[str, Any]:
@@ -1012,8 +1009,8 @@ def _iso_z(value: datetime) -> str:
     return value.astimezone(UTC).isoformat().replace("+00:00", "Z")
 
 
-def _local_date(value: datetime, timezone_name: str) -> date:
-    return value.astimezone(ZoneInfo(timezone_name)).date()
+def _local_date(value: datetime, time_zone: tzinfo) -> date:
+    return value.astimezone(time_zone).date()
 
 
 def _normalized_key(value: str) -> str:
