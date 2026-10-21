@@ -8,7 +8,10 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import (
+    async_create_clientsession,
+    async_get_clientsession,
+)
 from homeassistant.util import dt as dt_util
 
 from .client import (
@@ -80,8 +83,13 @@ async def _async_validate_portal(
         time_zone=time_zone,
         timeout_seconds=DEFAULT_REQUEST_TIMEOUT_SECONDS,
     )
-    client = SolarEdgePortalClient(config, session=async_get_clientsession(hass))
-    await client.live_power_flow()
+    session = async_create_clientsession(hass, auto_cleanup=False)
+    try:
+        client = SolarEdgePortalClient(config, session=session)
+        await client.live_power_flow()
+    finally:
+        # Detach closes this session without closing HA's shared connector.
+        session.detach()
 
 
 def _bridge_schema(

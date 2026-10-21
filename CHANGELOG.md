@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.4 — 2026-10-21
+
+- Isolate SolarEdge portal login cookies in a dedicated session per config entry,
+  using Home Assistant's automatic cleanup on unload, failed setup, and shutdown.
+- Use a separate short-lived session for portal validation and release it on
+  success, errors, or cancellation without closing Home Assistant's connector.
+
 ## 0.1.3 — 2026-10-18
 
 - Resolve portal time zones asynchronously with Home Assistant's cached helper

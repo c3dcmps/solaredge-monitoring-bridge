@@ -13,6 +13,8 @@ from unittest.mock import AsyncMock, Mock, sentinel
 from zoneinfo import ZoneInfo
 
 import pytest
+from aiohttp import ClientSession, TCPConnector
+from yarl import URL
 
 COMPONENT = Path(__file__).parents[1] / "custom_components" / "solaredge_one_bridge"
 PACKAGE = "solaredge_one_bridge"
@@ -159,13 +161,15 @@ def test_config_flow_resolves_zone_before_portal_access(valid_zone) -> None:
     resolver = AsyncMock(return_value=time_zone)
     client = types.SimpleNamespace(live_power_flow=AsyncMock())
     factory = Mock(return_value=client)
+    session = Mock()
+    create_session = Mock(return_value=session)
     validate = _async_entrypoint(
         "config_flow.py",
         "_async_validate_portal",
         dt_util=types.SimpleNamespace(async_get_time_zone=resolver),
         SolarEdgePortalConfig=adapter.SolarEdgePortalConfig,
         SolarEdgePortalClient=factory,
-        async_get_clientsession=lambda hass: sentinel.session,
+        async_create_clientsession=create_session,
     )
     operation = validate(
         sentinel.hass,
@@ -178,11 +182,15 @@ def test_config_flow_resolves_zone_before_portal_access(valid_zone) -> None:
         asyncio.run(operation)
         config = factory.call_args.args[0]
         assert config.time_zone is time_zone
+        assert factory.call_args.kwargs["session"] is session
+        create_session.assert_called_once_with(sentinel.hass, auto_cleanup=False)
         client.live_power_flow.assert_awaited_once()
+        session.detach.assert_called_once_with()
     else:
         with pytest.raises(ValueError, match="timezone is invalid"):
             asyncio.run(operation)
         factory.assert_not_called()
+        create_session.assert_not_called()
     resolver.assert_awaited_once_with(
         "America/Los_Angeles" if valid_zone else "Not/A_Zone"
     )
@@ -193,6 +201,8 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
     time_zone = ZoneInfo("America/Los_Angeles") if valid_zone else None
     resolver = AsyncMock(return_value=time_zone)
     factory = Mock()
+    create_session = Mock(return_value=sentinel.portal_session)
+    shared_session = Mock()
     coordinator = types.SimpleNamespace(async_config_entry_first_refresh=AsyncMock())
     coordinator_factory = Mock(return_value=coordinator)
     hass = types.SimpleNamespace(
@@ -220,7 +230,8 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
         dt_util=types.SimpleNamespace(async_get_time_zone=resolver),
         SolarEdgePortalSnapshotClient=factory,
         SolarEdgeBridgeCoordinator=coordinator_factory,
-        async_get_clientsession=lambda hass: sentinel.session,
+        async_create_clientsession=create_session,
+        async_get_clientsession=shared_session,
         ConfigEntryNotReady=ConfigEntryNotReady,
         timedelta=timedelta,
         _async_update_listener=sentinel.listener,
@@ -229,6 +240,8 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
     if valid_zone:
         assert asyncio.run(setup(hass, entry)) is True
         assert factory.call_args.kwargs["time_zone"] is time_zone
+        assert factory.call_args.args[0] is sentinel.portal_session
+        create_session.assert_called_once_with(hass)
         assert entry.runtime_data is coordinator
         coordinator.async_config_entry_first_refresh.assert_awaited_once()
         hass.config_entries.async_forward_entry_setups.assert_awaited_once_with(
@@ -239,4 +252,73 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
             asyncio.run(setup(hass, entry))
         factory.assert_not_called()
         coordinator_factory.assert_not_called()
+        create_session.assert_not_called()
     resolver.assert_awaited_once_with(entry.data["time_zone"])
+    shared_session.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [None, "authentication", "connection", "cancellation", "construction"],
+)
+def test_validation_isolates_cookies_and_always_releases_session(failure) -> None:
+    async def exercise():
+        connector = TCPConnector()
+        shared = ClientSession(connector=connector, connector_owner=False)
+        private = ClientSession(connector=connector, connector_owner=False)
+        create_session = Mock(return_value=private)
+        portal = _load("portal")
+        error = {
+            "authentication": portal.SolarEdgePortalAuthenticationError("rejected"),
+            "connection": portal.SolarEdgePortalError("unavailable"),
+            "cancellation": asyncio.CancelledError(),
+            "construction": ValueError("invalid config"),
+        }.get(failure)
+
+        async def live_power_flow():
+            private.cookie_jar.update_cookies(
+                {"CSRF-TOKEN": "synthetic-cookie"},
+                response_url=URL("https://monitoring.solaredge.com"),
+            )
+            assert len(private.cookie_jar) == 1
+            assert not shared.cookie_jar
+            if error is not None:
+                raise error
+
+        factory = Mock(
+            return_value=types.SimpleNamespace(live_power_flow=live_power_flow),
+            side_effect=error if failure == "construction" else None,
+        )
+        validate = _async_entrypoint(
+            "config_flow.py",
+            "_async_validate_portal",
+            dt_util=types.SimpleNamespace(async_get_time_zone=AsyncMock(return_value=UTC)),
+            SolarEdgePortalConfig=adapter.SolarEdgePortalConfig,
+            SolarEdgePortalClient=factory,
+            async_create_clientsession=create_session,
+        )
+        try:
+            operation = validate(
+                sentinel.hass,
+                username="user@example.test",
+                password="synthetic-password",
+                site_id="1234567",
+                timezone_name="UTC",
+            )
+            if error is None:
+                await operation
+            else:
+                with pytest.raises(type(error)):
+                    await operation
+            create_session.assert_called_once_with(sentinel.hass, auto_cleanup=False)
+            assert factory.call_args.kwargs["session"] is private
+            assert private.closed
+            assert not connector.closed
+            assert not shared.closed
+            assert not shared.cookie_jar
+        finally:
+            await private.close()
+            await shared.close()
+            await connector.close()
+
+    asyncio.run(exercise())

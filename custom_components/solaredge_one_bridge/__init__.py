@@ -8,7 +8,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import (
+    async_create_clientsession,
+    async_get_clientsession,
+)
 from homeassistant.util import dt as dt_util
 
 from .client import SolarEdgeBridgeClient
@@ -48,12 +51,13 @@ async def async_setup_entry(
         max_snapshot_age_seconds = int(
             entry.options.get(CONF_MAX_SNAPSHOT_AGE, DEFAULT_MAX_SNAPSHOT_AGE_SECONDS)
         )
-        session = async_get_clientsession(hass)
         mode = entry.data.get(CONF_MODE, MODE_BRIDGE)
         if mode == MODE_PORTAL:
             time_zone = await dt_util.async_get_time_zone(entry.data[CONF_TIME_ZONE])
             if time_zone is None:
                 raise ValueError("SolarEdge portal timezone is invalid")
+            # HA releases this entry's private cookie jar on unload or failed setup.
+            session = async_create_clientsession(hass)
             client = SolarEdgePortalSnapshotClient(
                 session,
                 username=entry.data[CONF_USERNAME],
@@ -65,7 +69,7 @@ async def async_setup_entry(
             )
         elif mode == MODE_BRIDGE:
             client = SolarEdgeBridgeClient(
-                session,
+                async_get_clientsession(hass),
                 entry.data[CONF_ENDPOINT],
                 entry.data[CONF_SHARED_SECRET],
                 timeout_seconds=timeout_seconds,
