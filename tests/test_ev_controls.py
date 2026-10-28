@@ -45,7 +45,7 @@ def test_command_error_details_allow_only_fixed_reasons_and_numeric_http_status(
     None
 ):
     error_class = portal_module.SolarEdgeEVCommandError
-    assert "CSRF" in str(error_class("missing_csrf"))
+    assert "rejected" in str(error_class("rejected"))
     assert "403" in str(error_class("http_error", status=403))
     with pytest.raises(ValueError):
         error_class("private-detail")
@@ -120,12 +120,20 @@ def test_invalid_command_arguments_fail_before_network_access(key, charging) -> 
     asyncio.run(exercise())
 
 
-def test_missing_csrf_cookie_prevents_put() -> None:
+def test_bearer_only_session_can_submit_without_a_legacy_csrf_cookie() -> None:
     async def exercise():
-        portal, session = _portal([_Response(200, DISCOVERY)], csrf=False)
-        with pytest.raises(SolarEdgePortalError, match="CSRF"):
-            await portal.set_ev_charging(KEY, charging=True)
-        assert [call[0] for call in session.calls] == ["GET"]
+        portal, session = _portal(
+            [
+                _Response(200, DISCOVERY),
+                _Response(200, PASSED),
+            ],
+            csrf=False,
+        )
+        await portal.set_ev_charging(KEY, charging=False)
+        assert [call[0] for call in session.calls] == ["GET", "PUT"]
+        headers = session.calls[-1][2]["headers"]
+        assert headers["Authorization"] == "Bearer synthetic"
+        assert "X-CSRF-TOKEN" not in headers
 
     asyncio.run(exercise())
 

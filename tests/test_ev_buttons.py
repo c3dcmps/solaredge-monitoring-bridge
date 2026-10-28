@@ -26,7 +26,9 @@ def test_safe_control_error_reports_actionable_reason() -> None:
     async def exercise():
         client = SimpleNamespace(
             async_set_ev_charging=AsyncMock(
-                side_effect=portal_module.SolarEdgeEVCommandError("missing_csrf")
+                side_effect=portal_module.SolarEdgeEVCommandError(
+                    "http_error", status=403
+                )
             ),
             async_get_ev_chargers=AsyncMock(
                 return_value={
@@ -35,7 +37,7 @@ def test_safe_control_error_reports_actionable_reason() -> None:
             ),
         )
         coordinator = _coordinator(client)
-        with pytest.raises(_HomeAssistantError, match="CSRF"):
+        with pytest.raises(_HomeAssistantError, match="403"):
             await coordinator.async_set_charging(KEY, charging=False)
 
     asyncio.run(exercise())

@@ -27,8 +27,10 @@ site. A fresh device list must uniquely resolve the opaque charger key before a
 validated numeric reporter ID enters the URL. The reporter ID is transient;
 no raw control identifier is added to entity attributes or diagnostics.
 
-An anti-CSRF cookie is required. Redirects, failed HTTP status, missing validation
-and application rejection fail closed. An ambiguous PUT is never retried
+The existing Bearer OAuth authorization is required; an anti-CSRF cookie is
+forwarded as a header when present. A cookie is not invented for the OAuth session.
+Redirects, failed HTTP status, missing validation and application rejection fail
+closed. An ambiguous PUT is never retried
 automatically. HTTP/application acceptance does not prove physical charging;
 provider-reported mode/status/power remain authoritative. Manual requests can
 persist across charging completion or unplugging until explicitly cancelled.

@@ -89,7 +89,8 @@ Each discovered portal charger also has two buttons:
 - **Stop charging** submits SolarEdge's stop/cancel request.
 
 Commands reuse the configured private session, resolve the device from a fresh
-site device list, and require a valid anti-CSRF cookie. A rejected or ambiguous
+site device list, and use the existing Bearer OAuth authorization, including an
+anti-CSRF header when SolarEdge provides its cookie. A rejected or ambiguous
 response raises an HA action error. PUT requests are never retried automatically.
 Requests are serialized and followed by a requested status refresh; sensor values
 are never changed optimistically. A successful button press confirms that SolarEdge

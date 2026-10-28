@@ -108,9 +108,6 @@ class SolarEdgeEVCommandError(SolarEdgePortalError):
 
     def __init__(self, reason: str, *, status: int | None = None) -> None:
         messages = {
-            "missing_csrf": (
-                "EV control requires a CSRF cookie; reconnect the integration"
-            ),
             "http_error": "SolarEdge did not confirm the EV command",
             "rejected": "SolarEdge rejected the EV command",
             "interrupted": (
@@ -209,7 +206,7 @@ class SolarEdgePortalClient:
 
     @property
     def ev_control_diagnostics(self) -> dict[str, bool]:
-        """Describe session readiness without exposing cookies or token values."""
+        """Describe authentication material without exposing cookie or token values."""
         cookies = list(self._session.cookie_jar) if self._session is not None else []
         authorized = self._authorization_header is not None
         return {
@@ -244,8 +241,6 @@ class SolarEdgePortalClient:
         devices = await self.ev_chargers()
         reporter = resolve_ev_reporter_id(devices, site_id=self.config.site_id, key=key)
         headers = self._auth_headers()
-        if not headers.get("X-CSRF-TOKEN"):
-            raise SolarEdgeEVCommandError("missing_csrf")
         response = await self._request(
             "PUT",
             f"{_EV_CONTROL_BASE_URL}/{self.config.site_id}/devices/{reporter}/activationState",
