@@ -92,12 +92,19 @@ def _coordinator_class():
     )["SolarEdgeEVCoordinator"]
 
 
+def _device_info(*, identifiers, manufacturer, model, name):
+    """Accept device registration fields used by the current HA API."""
+    return dict(
+        identifiers=identifiers, manufacturer=manufacturer, model=model, name=name
+    )
+
+
 def _entity_module():
     return _load_boundary(
         "ev_sensor.py",
         CoordinatorEntity=_CoordinatorEntity,
         SensorEntity=type("Sensor", (), {}),
-        DeviceInfo=dict,
+        DeviceInfo=_device_info,
         DOMAIN="solaredge_one_bridge",
         callback=lambda function: function,
         SolarEdgeEVCoordinator=_coordinator_class(),
