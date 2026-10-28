@@ -88,7 +88,6 @@ class SolarEdgeEVSensor(CoordinatorEntity[SolarEdgeEVCoordinator], SensorEntity)
             manufacturer="SolarEdge",
             model="EV charger (Monitoring)",
             name=f"SolarEdge EV charger {key[:8]}",
-            via_device=(DOMAIN, "bridge"),
         )
 
     @property
