@@ -71,6 +71,15 @@ class SolarEdgePortalSnapshotClient:
             devices, site_id=self._portal.config.site_id, power_w=power
         )
 
+    async def async_set_ev_charging(self, key: str, *, charging: bool) -> None:
+        """Submit a manual request through the existing authenticated portal."""
+        await self._portal.set_ev_charging(key, charging=charging)
+
+    @property
+    def ev_control_diagnostics(self) -> dict[str, bool]:
+        """Return only session-readiness flags for EV diagnostics."""
+        return self._portal.ev_control_diagnostics
+
     async def _async_ev_power(self) -> object:
         try:
             flow = await self._portal.live_power_flow()

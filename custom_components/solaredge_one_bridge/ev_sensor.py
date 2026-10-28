@@ -38,14 +38,9 @@ async def async_setup_ev_sensors(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Discover EV devices now and after later successful polls."""
-    site = entry.runtime_data
-    client = site.portal_client
-    if client is None:
+    coordinator = entry.runtime_data.ev_coordinator
+    if coordinator is None:
         return
-    coordinator = SolarEdgeEVCoordinator(
-        hass, entry, client, update_interval=site.update_interval
-    )
-    site.ev_coordinator = coordinator
     known: set[str] = set()
 
     @callback
@@ -63,7 +58,6 @@ async def async_setup_ev_sensors(
                 ]
             )
 
-    await coordinator.async_refresh()
     entry.async_on_unload(coordinator.async_add_listener(discover))
     discover()
 

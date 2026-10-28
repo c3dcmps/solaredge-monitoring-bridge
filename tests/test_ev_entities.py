@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from test_portal import SolarEdgePortalError
+from test_portal import SolarEdgePortalError, portal_module
 from test_portal_client import _load
 
 EVChargerSnapshot = _load("ev_charger").EVChargerSnapshot
@@ -19,6 +19,10 @@ COMPONENT = Path(__file__).parents[1] / "custom_components" / "solaredge_one_bri
 
 
 class _UpdateFailed(Exception):
+    pass
+
+
+class _HomeAssistantError(Exception):
     pass
 
 
@@ -42,6 +46,9 @@ class _Coordinator:
             self.last_update_success = False
         for listener in list(self.listeners):
             listener()
+
+    async def async_request_refresh(self):
+        await self.async_refresh()
 
     def async_add_listener(self, listener):
         self.listeners.append(listener)
@@ -86,8 +93,11 @@ def _coordinator_class():
         DataUpdateCoordinator=_Coordinator,
         UpdateFailed=_UpdateFailed,
         SolarEdgePortalError=SolarEdgePortalError,
+        SolarEdgeEVCommandError=portal_module.SolarEdgeEVCommandError,
         EVChargerSnapshot=EVChargerSnapshot,
         DOMAIN="solaredge_one_bridge",
+        asyncio=asyncio,
+        HomeAssistantError=_HomeAssistantError,
         _LOGGER=None,
     )["SolarEdgeEVCoordinator"]
 
@@ -197,14 +207,15 @@ def test_setup_discovers_later_arrivals_once_and_unregisters_listener() -> None:
             )
         )
         callbacks = []
-        site = SimpleNamespace(
-            portal_client=client, update_interval=timedelta(seconds=60)
+        ev = _coordinator_class()(
+            None, SimpleNamespace(), client, update_interval=timedelta(seconds=60)
         )
+        await ev.async_refresh()
+        site = SimpleNamespace(ev_coordinator=ev)
         entry = SimpleNamespace(runtime_data=site, async_on_unload=callbacks.append)
         added = []
         await module["async_setup_ev_sensors"](None, entry, added.extend)
         assert added == []
-        ev = site.ev_coordinator
         await ev.async_refresh()
         assert len(added) == 3
         await ev.async_refresh()
@@ -221,11 +232,11 @@ def test_setup_discovers_later_arrivals_once_and_unregisters_listener() -> None:
 def test_local_bridge_does_not_start_ev_polling() -> None:
     async def exercise():
         module = _entity_module()
-        site = SimpleNamespace(portal_client=None)
+        site = SimpleNamespace(ev_coordinator=None)
         entry = SimpleNamespace(runtime_data=site)
         await module["async_setup_ev_sensors"](
             None, entry, lambda _: pytest.fail("EV created")
         )
-        assert not hasattr(site, "ev_coordinator")
+        assert site.ev_coordinator is None
 
     asyncio.run(exercise())

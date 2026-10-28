@@ -1,7 +1,7 @@
-"""Hardened read-only client for SolarEdge's unofficial monitoring portal.
+"""Hardened SolarEdge portal client with specific manual EV charging commands.
 
-The fixed endpoint set is undocumented and may change without notice. No provider
-response is exposed directly; callers must apply an explicit aggregate allowlist.
+The fixed endpoint set is undocumented and may change without notice. Callers
+apply explicit field allowlists before publishing telemetry or entity metadata.
 """
 
 from __future__ import annotations
@@ -22,6 +22,8 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlsplit
 
 import aiohttp
 
+from custom_components.solaredge_one_bridge.ev_charger import resolve_ev_reporter_id
+
 _OAUTH_CLIENT_ID = "ugfnsujd3384sshcjehaphlh3"  # gitleaks:allow; public client ID
 _OAUTH_REDIRECT_URI = "https://monitoring.solaredge.com/mfe/auth/callback"
 _OAUTH_AUTHORIZE_URL = "https://login.solaredge.com/oauth2/authorize"
@@ -29,6 +31,10 @@ _OAUTH_TOKEN_URL = "https://login.solaredge.com/oauth2/token"
 _AUTH_EXCHANGE_URL = "https://monitoring.solaredge.com/services/auth/token?legacy=false"
 _DASHBOARD_BASE_URL = "https://monitoring.solaredge.com/services/dashboard"
 _DEVICES_BASE_URL = "https://monitoring.solaredge.com/services/api/homeautomation/v1.0"
+_EV_CONTROL_BASE_URL = (
+    "https://monitoring.solaredge.com/services/m/api/homeautomation/v1.0"
+)
+_EV_CHARGER_KEY = re.compile(r"[0-9a-f]{64}")
 
 _LOGIN_HOST = "login.solaredge.com"
 _MONITORING_HOST = "monitoring.solaredge.com"
@@ -97,6 +103,27 @@ class SolarEdgePortalAuthenticationError(SolarEdgePortalError):
     pass
 
 
+class SolarEdgeEVCommandError(SolarEdgePortalError):
+    """Expose only fixed, actionable control reasons, never provider messages."""
+
+    def __init__(self, reason: str, *, status: int | None = None) -> None:
+        messages = {
+            "http_error": "SolarEdge did not confirm the EV command",
+            "rejected": "SolarEdge rejected the EV command",
+            "interrupted": (
+                "EV command response was interrupted; check the charger state"
+            ),
+        }
+        if reason not in messages:
+            raise ValueError("Invalid EV command error reason")
+        message = messages[reason]
+        if reason == "http_error":
+            if type(status) is not int or not 100 <= status <= 599:
+                raise ValueError("Invalid EV command HTTP status")
+            message = f"{message} (HTTP {status}); check the charger state"
+        super().__init__(message)
+
+
 @dataclass(frozen=True, slots=True)
 class SolarEdgePortalConfig:
     username: str
@@ -122,7 +149,7 @@ class SolarEdgePortalConfig:
 
 
 class SolarEdgePortalClient:
-    """Hardened read-only client for a fixed SolarEdge dashboard endpoint set."""
+    """Constrained portal client for telemetry and two specific EV commands."""
 
     def __init__(
         self,
@@ -176,6 +203,64 @@ class SolarEdgePortalClient:
             None,
             device_list=True,
         )
+
+    @property
+    def ev_control_diagnostics(self) -> dict[str, bool]:
+        """Describe authentication material without exposing cookie or token values."""
+        cookies = list(self._session.cookie_jar) if self._session is not None else []
+        authorized = self._authorization_header is not None
+        return {
+            "authorized": authorized,
+            "csrf_cookie_present": any(
+                cookie.key == "CSRF-TOKEN" for cookie in cookies
+            ),
+            "csrf_header_ready": authorized
+            and bool(self._auth_headers().get("X-CSRF-TOKEN")),
+            "legacy_session_present": any(
+                cookie.key == "SPRING_SECURITY_REMEMBER_ME_COOKIE" for cookie in cookies
+            ),
+        }
+
+    async def set_ev_charging(self, key: str, *, charging: bool) -> None:
+        """Submit a specific EV request without retrying an ambiguous write.
+
+        Args:
+            key: Opaque key of a charger belonging to the configured site.
+            charging: True to request charging, False to cancel the manual request.
+
+        Raises:
+            ValueError: If the arguments or freshly discovered device are invalid.
+            SolarEdgePortalError: If authentication or command validation fails.
+        """
+        if (
+            not isinstance(charging, bool)
+            or not isinstance(key, str)
+            or not _EV_CHARGER_KEY.fullmatch(key)
+        ):
+            raise ValueError("SolarEdge EV charging command arguments are invalid")
+        devices = await self.ev_chargers()
+        reporter = resolve_ev_reporter_id(devices, site_id=self.config.site_id, key=key)
+        headers = self._auth_headers()
+        response = await self._request(
+            "PUT",
+            f"{_EV_CONTROL_BASE_URL}/{self.config.site_id}/devices/{reporter}/activationState",
+            json_body={
+                "mode": "MANUAL",
+                "level": 100 if charging else 0,
+                "duration": None,
+            },
+            headers=headers,
+            allow_redirects=False,
+        )
+        try:
+            async with response:
+                if response.status != 200:
+                    raise SolarEdgeEVCommandError("http_error", status=response.status)
+                _validate_ev_command_result(
+                    await self._read_json(response, "EV command")
+                )
+        except (TimeoutError, aiohttp.ClientError) as err:
+            raise SolarEdgeEVCommandError("interrupted") from err
 
     async def live_power_flow(self) -> dict[str, Any]:
         params = [("components", component) for component in _POWER_FLOW_COMPONENTS]
@@ -1033,3 +1118,13 @@ def _normalized_key(value: str) -> str:
 
 def _deep_copy(value: Any) -> Any:
     return json.loads(json.dumps(value))
+
+
+def _validate_ev_command_result(payload: Any) -> None:
+    if (
+        not isinstance(payload, Mapping)
+        or payload.get("status") != "PASSED"
+        or payload.get("httpStatus", 200) != 200
+        or payload.get("errorMessages")
+    ):
+        raise SolarEdgeEVCommandError("rejected")

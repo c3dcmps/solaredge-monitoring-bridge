@@ -6,7 +6,8 @@ diagnostic downloads, or raw provider responses.
 
 Report vulnerabilities through GitHub's private vulnerability reporting feature.
 
-The integration is read-only. Reports demonstrating credential leakage,
+The local bridge is read-only. Portal mode provides monitoring and two explicit
+manual EV controls. Reports demonstrating credential leakage,
 credential forwarding outside the exact SolarEdge login/monitoring hosts,
 acceptance of an untrusted login form or redirect, unbounded response processing,
 or propagation of non-allowlisted provider data are security-sensitive.
@@ -21,3 +22,15 @@ The stable device key is hashed, not encrypted; it is not a promise of anonymity
 Diagnostics include EV health and device counts, never provider identifiers or
 raw device responses.
 
+EV buttons use only the fixed HTTPS activationState endpoint for the configured
+site. A fresh device list must uniquely resolve the opaque charger key before a
+validated numeric reporter ID enters the URL. The reporter ID is transient;
+no raw control identifier is added to entity attributes or diagnostics.
+
+The existing Bearer OAuth authorization is required; an anti-CSRF cookie is
+forwarded as a header when present. A cookie is not invented for the OAuth session.
+Redirects, failed HTTP status, missing validation and application rejection fail
+closed. An ambiguous PUT is never retried
+automatically. HTTP/application acceptance does not prove physical charging;
+provider-reported mode/status/power remain authoritative. Manual requests can
+persist across charging completion or unplugging until explicitly cancelled.

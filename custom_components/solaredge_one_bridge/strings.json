@@ -14,7 +14,7 @@
     "step": {
       "user": {
         "title": "Choose connection method",
-        "description": "Connect with any SolarEdge monitoring account that can view the site; site ownership and an API key are not required. Portal access is unofficial and read-only.",
+        "description": "Connect with a SolarEdge monitoring account that can view the site. The portal connection also provides manual EV charging controls when authorized; the local snapshot bridge is read-only.",
         "menu_options": {
           "portal": "SolarEdge monitoring portal (experimental)",
           "bridge": "Compatible local snapshot bridge"
@@ -126,6 +126,14 @@
       },
       "ev_charger_power": {
         "name": "Charging power"
+      }
+    },
+    "button": {
+      "ev_charge_now": {
+        "name": "Charge now"
+      },
+      "ev_stop_charging": {
+        "name": "Stop charging"
       }
     }
   }
