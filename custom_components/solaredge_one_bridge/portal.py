@@ -207,6 +207,23 @@ class SolarEdgePortalClient:
             device_list=True,
         )
 
+    @property
+    def ev_control_diagnostics(self) -> dict[str, bool]:
+        """Describe session readiness without exposing cookies or token values."""
+        cookies = list(self._session.cookie_jar) if self._session is not None else []
+        authorized = self._authorization_header is not None
+        return {
+            "authorized": authorized,
+            "csrf_cookie_present": any(
+                cookie.key == "CSRF-TOKEN" for cookie in cookies
+            ),
+            "csrf_header_ready": authorized
+            and bool(self._auth_headers().get("X-CSRF-TOKEN")),
+            "legacy_session_present": any(
+                cookie.key == "SPRING_SECURITY_REMEMBER_ME_COOKIE" for cookie in cookies
+            ),
+        }
+
     async def set_ev_charging(self, key: str, *, charging: bool) -> None:
         """Submit a specific EV request without retrying an ambiguous write.
 

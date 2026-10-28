@@ -50,5 +50,6 @@ async def async_get_config_entry_diagnostics(
             "enabled": ev is not None,
             "last_update_success": ev.last_update_success if ev else None,
             "device_count": len(ev.data) if ev and ev.last_update_success else None,
+            "control_session": ev.control_session_diagnostics if ev else None,
         },
     }

@@ -26,6 +26,21 @@ DISCOVERY = {"devicesByType": {"EV_CHARGER": [{"reporterId": 42}]}}
 PASSED = {"status": "PASSED", "httpStatus": 200, "errorMessages": []}
 
 
+def test_control_session_diagnostics_report_flags_without_cookie_values() -> None:
+    portal, session = _portal([], csrf=True)
+    flags = portal.ev_control_diagnostics
+    assert flags == {
+        "authorized": True,
+        "csrf_cookie_present": True,
+        "csrf_header_ready": True,
+        "legacy_session_present": False,
+    }
+    session.cookie_jar[0]["domain"] = "solaredge.com"
+    assert portal.ev_control_diagnostics["csrf_cookie_present"] is True
+    assert portal.ev_control_diagnostics["csrf_header_ready"] is False
+    assert "synthetic" not in repr(portal.ev_control_diagnostics)
+
+
 def test_command_error_details_allow_only_fixed_reasons_and_numeric_http_status() -> (
     None
 ):

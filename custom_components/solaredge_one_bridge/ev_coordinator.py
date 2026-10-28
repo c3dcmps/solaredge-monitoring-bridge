@@ -46,6 +46,11 @@ class SolarEdgeEVCoordinator(DataUpdateCoordinator[dict[str, EVChargerSnapshot]]
         self._command_lock = asyncio.Lock()
         self.data = {}
 
+    @property
+    def control_session_diagnostics(self) -> dict[str, bool]:
+        """Expose sanitized session readiness for troubleshooting EV controls."""
+        return self._client.ev_control_diagnostics
+
     async def async_set_charging(self, key: str, *, charging: bool) -> None:
         """Serialize manual requests and refresh provider-reported state afterward.
 
