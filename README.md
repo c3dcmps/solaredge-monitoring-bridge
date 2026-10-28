@@ -8,11 +8,12 @@ Read whole-site SolarEdge solar, grid, consumption, and battery telemetry in
 Home Assistant using any monitoring account with site access—site ownership is
 not required.
 
-It supports two read-only connection methods:
+It supports two connection methods:
 
 - **SolarEdge monitoring portal (experimental):** logs in directly with any
   SolarEdge monitoring account that can access the site and a numeric site ID;
-  the account does not need to own the site.
+  the account does not need to own the site for monitoring. Manual EV charging
+  commands require the account to have the corresponding SolarEdge permissions.
 - **Local snapshot bridge:** consumes the documented protocol in
   [docs/snapshot-protocol.md](docs/snapshot-protocol.md).
 
@@ -37,8 +38,8 @@ From that access, the integration exposes:
 - observation time and per-field completeness information.
 
 If you have official API credentials or local Modbus access, those documented
-connection methods remain preferable. The portal option covers read-only access
-when those methods are unavailable.
+connection methods remain preferable for monitoring. The portal connection also
+provides the native SolarEdge manual EV charging actions.
 
 ## Entities
 
@@ -78,7 +79,30 @@ An account able to view the dashboard may still lack access to the EV endpoint.
 EV discovery shares the configured polling interval and private portal session.
 It reuses cached power-flow responses when available; one polling cycle can issue
 multiple HTTP requests. The local snapshot bridge does not discover EV devices.
-There are no EV buttons, switches, charging commands or local KEBA connections.
+The local bridge remains read-only. No local KEBA or inverter control is used.
+
+### Manual EV charging buttons
+
+Each discovered portal charger also has two buttons:
+
+- **Charge now** submits SolarEdge's manual charging request.
+- **Stop charging** submits SolarEdge's stop/cancel request.
+
+Commands reuse the configured private session, resolve the device from a fresh
+site device list, and require a valid anti-CSRF cookie. A rejected or ambiguous
+response raises an HA action error. PUT requests are never retried automatically.
+Requests are serialized and followed by a requested status refresh; sensor values
+are never changed optimistically. A successful button press confirms that SolarEdge
+accepted the request, not that the vehicle is physically charging.
+
+**Manual charging can persist after the vehicle finishes or is unplugged.**
+Use Stop charging to cancel the manual request. These buttons do not create a
+timed charging session, change the native schedule or permanently inhibit solar
+charging. Inspect the reported activation mode and power after stopping; SolarEdge's
+automatic solar/schedule behavior can resume.
+
+The vehicle's own charge limit, schedule and readiness still affect charging.
+Controls become unavailable when device discovery fails or the device disappears.
 
 ## Installation
 
@@ -116,7 +140,8 @@ from diagnostics and never become entity state or attributes.
 The client is deliberately constrained:
 
 - authentication is sent only to exact SolarEdge login and monitoring hosts;
-- only fixed read-only dashboard endpoints and the EV device-list endpoint are used;
+- only fixed dashboard/device-list endpoints and the specific EV activation endpoint
+  are used;
 - cross-host login forms, redirects, embedded URL credentials, and unsafe
   redirects are rejected;
 - responses are bounded before parsing;
@@ -124,6 +149,11 @@ The client is deliberately constrained:
 - provider responses are recursively stripped of common secret and identifying
   fields before normalization; and
 - Home Assistant retains only the aggregate snapshot and EV field allowlists.
+
+The only control operation sends the fixed manual start/stop body to the configured
+site's EV activation endpoint on `monitoring.solaredge.com`. Raw reporter IDs are
+resolved transiently for that request and never become sensor/button attributes or
+diagnostics. Control errors do not include provider response bodies or tokens.
 
 The integration polls every five minutes by default. Do not lower the interval
 unnecessarily; the portal is not a documented public API.

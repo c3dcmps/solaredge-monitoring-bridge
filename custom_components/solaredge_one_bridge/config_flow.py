@@ -134,7 +134,7 @@ def _portal_schema(
 
 
 class SolarEdgeMonitoringBridgeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Configure one read-only SolarEdge monitoring source."""
+    """Configure a SolarEdge portal connection or read-only snapshot source."""
 
     VERSION = 1
 
@@ -156,7 +156,7 @@ class SolarEdgeMonitoringBridgeConfigFlow(config_entries.ConfigFlow, domain=DOMA
     async def async_step_portal(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Configure direct read-only monitoring-portal access."""
+        """Configure direct monitoring-portal access and permitted EV controls."""
         errors: dict[str, str] = {}
         defaults = {CONF_TIME_ZONE: self.hass.config.time_zone}
         if user_input is not None:

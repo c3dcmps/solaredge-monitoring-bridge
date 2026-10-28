@@ -14,6 +14,8 @@ from homeassistant.helpers.aiohttp_client import (
 )
 from homeassistant.util import dt as dt_util
 
+from custom_components.solaredge_one_bridge.ev_coordinator import SolarEdgeEVCoordinator
+
 from .client import SolarEdgeBridgeClient
 from .const import (
     CONF_ENDPOINT,
@@ -35,7 +37,7 @@ from .const import (
 from .coordinator import SolarEdgeBridgeCoordinator
 from .portal_client import SolarEdgePortalSnapshotClient
 
-PLATFORMS = [Platform.SENSOR]
+PLATFORMS = [Platform.SENSOR, Platform.BUTTON]
 
 SolarEdgeBridgeConfigEntry = ConfigEntry[SolarEdgeBridgeCoordinator]
 
@@ -52,13 +54,14 @@ async def async_setup_entry(
             entry.options.get(CONF_MAX_SNAPSHOT_AGE, DEFAULT_MAX_SNAPSHOT_AGE_SECONDS)
         )
         mode = entry.data.get(CONF_MODE, MODE_BRIDGE)
+        portal_client: SolarEdgePortalSnapshotClient | None = None
         if mode == MODE_PORTAL:
             time_zone = await dt_util.async_get_time_zone(entry.data[CONF_TIME_ZONE])
             if time_zone is None:
                 raise ValueError("SolarEdge portal timezone is invalid")
             # HA releases this entry's private cookie jar on unload or failed setup.
             session = async_create_clientsession(hass)
-            client = SolarEdgePortalSnapshotClient(
+            portal_client = SolarEdgePortalSnapshotClient(
                 session,
                 username=entry.data[CONF_USERNAME],
                 password=entry.data[CONF_PASSWORD],
@@ -67,6 +70,7 @@ async def async_setup_entry(
                 timeout_seconds=timeout_seconds,
                 max_snapshot_age_seconds=max_snapshot_age_seconds,
             )
+            client = portal_client
         elif mode == MODE_BRIDGE:
             client = SolarEdgeBridgeClient(
                 async_get_clientsession(hass),
@@ -80,17 +84,27 @@ async def async_setup_entry(
     except ValueError as err:
         raise ConfigEntryNotReady("SolarEdge configuration is invalid") from err
 
+    update_interval = timedelta(
+        seconds=int(
+            entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_SECONDS)
+        )
+    )
     coordinator = SolarEdgeBridgeCoordinator(
         hass,
         entry,
         client,
-        update_interval=timedelta(
-            seconds=int(
-                entry.options.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_SECONDS)
-            )
-        ),
+        update_interval=update_interval,
     )
     await coordinator.async_config_entry_first_refresh()
+    if portal_client is not None:
+        ev_coordinator = SolarEdgeEVCoordinator(
+            hass,
+            entry,
+            portal_client,
+            update_interval=update_interval,
+        )
+        coordinator.ev_coordinator = ev_coordinator
+        await ev_coordinator.async_refresh()
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

@@ -87,3 +87,35 @@ def parse_ev_chargers(
             power_w=power,
         )
     return result
+
+
+def resolve_ev_reporter_id(payload: object, *, site_id: str, key: str) -> str:
+    """Resolve an opaque key against a fresh, unambiguous device discovery.
+
+    Args:
+        payload: Fresh SolarEdge device-list response.
+        site_id: Configured site used to scope the opaque key.
+        key: Opaque charger key already exposed by the integration.
+
+    Returns:
+        Validated reporter ID for this operation only.
+
+    Raises:
+        ValueError: If discovery cannot resolve this key uniquely within the site.
+    """
+    if not isinstance(payload, Mapping) or key not in parse_ev_chargers(
+        payload, site_id=site_id
+    ):
+        raise ValueError(
+            "SolarEdge EV charger is no longer available; refresh device discovery"
+        )
+    for device in payload["devicesByType"]["EV_CHARGER"]:
+        if not isinstance(device, Mapping):
+            continue
+        identity = _identity(device.get("reporterId"))
+        if (
+            identity is not None
+            and hashlib.sha256(f"{site_id}:{identity}".encode()).hexdigest() == key
+        ):
+            return identity
+    raise ValueError("SolarEdge EV charger identity could not be resolved")

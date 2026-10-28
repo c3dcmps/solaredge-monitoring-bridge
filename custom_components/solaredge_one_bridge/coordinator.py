@@ -12,9 +12,6 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from custom_components.solaredge_one_bridge.ev_coordinator import SolarEdgeEVCoordinator
-from custom_components.solaredge_one_bridge.portal_client import (
-    SolarEdgePortalSnapshotClient,
-)
 
 from .client import (
     BridgeAuthenticationError,
@@ -54,15 +51,6 @@ class SolarEdgeBridgeCoordinator(DataUpdateCoordinator[SolarEdgeSnapshot]):
         )
         self._client = client
         self.ev_coordinator: SolarEdgeEVCoordinator | None = None
-
-    @property
-    def portal_client(self) -> SolarEdgePortalSnapshotClient | None:
-        """Return the portal source only when EV discovery is supported."""
-        return (
-            self._client
-            if isinstance(self._client, SolarEdgePortalSnapshotClient)
-            else None
-        )
 
     async def _async_update_data(self) -> SolarEdgeSnapshot:
         try:
