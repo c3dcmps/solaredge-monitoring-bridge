@@ -13,7 +13,10 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from custom_components.solaredge_one_bridge.const import DOMAIN
 from custom_components.solaredge_one_bridge.ev_charger import EVChargerSnapshot
-from custom_components.solaredge_one_bridge.portal import SolarEdgePortalError
+from custom_components.solaredge_one_bridge.portal import (
+    SolarEdgeEVCommandError,
+    SolarEdgePortalError,
+)
 from custom_components.solaredge_one_bridge.portal_client import (
     SolarEdgePortalSnapshotClient,
 )
@@ -62,6 +65,10 @@ class SolarEdgeEVCoordinator(DataUpdateCoordinator[dict[str, EVChargerSnapshot]]
                 await self._client.async_set_ev_charging(key, charging=charging)
             except (SolarEdgePortalError, ValueError) as err:
                 await self.async_request_refresh()
+                if isinstance(err, SolarEdgeEVCommandError):
+                    raise HomeAssistantError(
+                        f"SolarEdge could not confirm the EV command: {err}"
+                    ) from err
                 raise HomeAssistantError(
                     "SolarEdge could not confirm the EV command; "
                     "check the charger state before retrying"

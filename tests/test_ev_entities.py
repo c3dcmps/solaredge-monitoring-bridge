@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from test_portal import SolarEdgePortalError
+from test_portal import SolarEdgePortalError, portal_module
 from test_portal_client import _load
 
 EVChargerSnapshot = _load("ev_charger").EVChargerSnapshot
@@ -93,6 +93,7 @@ def _coordinator_class():
         DataUpdateCoordinator=_Coordinator,
         UpdateFailed=_UpdateFailed,
         SolarEdgePortalError=SolarEdgePortalError,
+        SolarEdgeEVCommandError=portal_module.SolarEdgeEVCommandError,
         EVChargerSnapshot=EVChargerSnapshot,
         DOMAIN="solaredge_one_bridge",
         asyncio=asyncio,

@@ -20,9 +20,22 @@ from test_portal import (
 from test_portal_client import _load
 
 model = _load("ev_charger")
+portal_module = _load("portal")
 KEY = hashlib.sha256(b"1234567:42").hexdigest()
 DISCOVERY = {"devicesByType": {"EV_CHARGER": [{"reporterId": 42}]}}
 PASSED = {"status": "PASSED", "httpStatus": 200, "errorMessages": []}
+
+
+def test_command_error_details_allow_only_fixed_reasons_and_numeric_http_status() -> (
+    None
+):
+    error_class = portal_module.SolarEdgeEVCommandError
+    assert "CSRF" in str(error_class("missing_csrf"))
+    assert "403" in str(error_class("http_error", status=403))
+    with pytest.raises(ValueError):
+        error_class("private-detail")
+    with pytest.raises(ValueError):
+        error_class("http_error", status="private-detail")
 
 
 def _portal(responses, *, csrf=True, session_type=_Session):

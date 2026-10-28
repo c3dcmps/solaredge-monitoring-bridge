@@ -17,9 +17,28 @@ from test_ev_entities import (
     _HomeAssistantError,
     _load_boundary,
 )
-from test_portal import SolarEdgePortalError
+from test_portal import SolarEdgePortalError, portal_module
 
 KEY = "a" * 64
+
+
+def test_safe_control_error_reports_actionable_reason() -> None:
+    async def exercise():
+        client = SimpleNamespace(
+            async_set_ev_charging=AsyncMock(
+                side_effect=portal_module.SolarEdgeEVCommandError("missing_csrf")
+            ),
+            async_get_ev_chargers=AsyncMock(
+                return_value={
+                    KEY: EVChargerSnapshot(KEY, "PLUGGED_IN", "AUTO", 0),
+                }
+            ),
+        )
+        coordinator = _coordinator(client)
+        with pytest.raises(_HomeAssistantError, match="CSRF"):
+            await coordinator.async_set_charging(KEY, charging=False)
+
+    asyncio.run(exercise())
 
 
 def _coordinator(client):

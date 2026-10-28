@@ -103,6 +103,30 @@ class SolarEdgePortalAuthenticationError(SolarEdgePortalError):
     pass
 
 
+class SolarEdgeEVCommandError(SolarEdgePortalError):
+    """Expose only fixed, actionable control reasons, never provider messages."""
+
+    def __init__(self, reason: str, *, status: int | None = None) -> None:
+        messages = {
+            "missing_csrf": (
+                "EV control requires a CSRF cookie; reconnect the integration"
+            ),
+            "http_error": "SolarEdge did not confirm the EV command",
+            "rejected": "SolarEdge rejected the EV command",
+            "interrupted": (
+                "EV command response was interrupted; check the charger state"
+            ),
+        }
+        if reason not in messages:
+            raise ValueError("Invalid EV command error reason")
+        message = messages[reason]
+        if reason == "http_error":
+            if type(status) is not int or not 100 <= status <= 599:
+                raise ValueError("Invalid EV command HTTP status")
+            message = f"{message} (HTTP {status}); check the charger state"
+        super().__init__(message)
+
+
 @dataclass(frozen=True, slots=True)
 class SolarEdgePortalConfig:
     username: str
@@ -204,9 +228,7 @@ class SolarEdgePortalClient:
         reporter = resolve_ev_reporter_id(devices, site_id=self.config.site_id, key=key)
         headers = self._auth_headers()
         if not headers.get("X-CSRF-TOKEN"):
-            raise SolarEdgePortalAuthenticationError(
-                "SolarEdge EV control requires a CSRF cookie; reconnect the integration"
-            )
+            raise SolarEdgeEVCommandError("missing_csrf")
         response = await self._request(
             "PUT",
             f"{_EV_CONTROL_BASE_URL}/{self.config.site_id}/devices/{reporter}/activationState",
@@ -221,17 +243,12 @@ class SolarEdgePortalClient:
         try:
             async with response:
                 if response.status != 200:
-                    raise SolarEdgePortalError(
-                        "SolarEdge did not confirm the EV command "
-                        f"(HTTP {response.status}); check the charger state"
-                    )
+                    raise SolarEdgeEVCommandError("http_error", status=response.status)
                 _validate_ev_command_result(
                     await self._read_json(response, "EV command")
                 )
         except (TimeoutError, aiohttp.ClientError) as err:
-            raise SolarEdgePortalError(
-                "SolarEdge EV command response was interrupted; check the charger state"
-            ) from err
+            raise SolarEdgeEVCommandError("interrupted") from err
 
     async def live_power_flow(self) -> dict[str, Any]:
         params = [("components", component) for component in _POWER_FLOW_COMPONENTS]
@@ -1098,6 +1115,4 @@ def _validate_ev_command_result(payload: Any) -> None:
         or payload.get("httpStatus", 200) != 200
         or payload.get("errorMessages")
     ):
-        raise SolarEdgePortalError(
-            "SolarEdge did not confirm the EV command; check the charger state"
-        )
+        raise SolarEdgeEVCommandError("rejected")
