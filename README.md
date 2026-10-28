@@ -71,6 +71,7 @@ three read-only sensors:
   cannot be assigned to an individual charger when multiple chargers are present.
 
 The mode sensor reports SolarEdge's mode; it does not prove that power is flowing.
+It can remain AUTO during a manual request, so it is not a manual-override flag.
 Missing fields and removed devices become unavailable. Devices appearing after
 startup are discovered on subsequent polls. An EV discovery failure leaves the
 whole-site sensors running and is reported separately in diagnostics and logs.
