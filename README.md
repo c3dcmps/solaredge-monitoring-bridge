@@ -42,7 +42,7 @@ when those methods are unavailable.
 
 ## Entities
 
-The integration creates up to fourteen entities. Missing or explicitly
+The integration creates up to fourteen whole-site entities. Missing or explicitly
 incomplete fields are unavailable rather than guessed.
 
 - Production and consumption power
@@ -56,6 +56,29 @@ incomplete fields are unavailable rather than guessed.
   attributes
 
 Power is expressed in W, energy in kWh, and state of energy in percent.
+
+### EV chargers (portal mode)
+
+The integration discovers EV chargers visible through the site's private
+homeautomation device-list endpoint. Each charger gets a separate device with
+three read-only sensors:
+
+- Charger status, using SolarEdge's reported value, such as `PLUGGED_IN`.
+- Activation mode, such as `AUTO` or `MANUAL`.
+- Charging power in W, when fresh EV power-flow data is available and the site
+  contains exactly one charger. The portal flow is a whole-site aggregate, so it
+  cannot be assigned to an individual charger when multiple chargers are present.
+
+The mode sensor reports SolarEdge's mode; it does not prove that power is flowing.
+Missing fields and removed devices become unavailable. Devices appearing after
+startup are discovered on subsequent polls. An EV discovery failure leaves the
+whole-site sensors running and is reported separately in diagnostics and logs.
+An account able to view the dashboard may still lack access to the EV endpoint.
+
+EV discovery shares the configured polling interval and private portal session.
+It reuses cached power-flow responses when available; one polling cycle can issue
+multiple HTTP requests. The local snapshot bridge does not discover EV devices.
+There are no EV buttons, switches, charging commands or local KEBA connections.
 
 ## Installation
 
@@ -93,14 +116,14 @@ from diagnostics and never become entity state or attributes.
 The client is deliberately constrained:
 
 - authentication is sent only to exact SolarEdge login and monitoring hosts;
-- only a fixed read-only dashboard endpoint set can be called;
+- only fixed read-only dashboard endpoints and the EV device-list endpoint are used;
 - cross-host login forms, redirects, embedded URL credentials, and unsafe
   redirects are rejected;
 - responses are bounded before parsing;
 - one authentication retry is allowed after a rejected session;
 - provider responses are recursively stripped of common secret and identifying
   fields before normalization; and
-- Home Assistant retains only the aggregate snapshot allowlist.
+- Home Assistant retains only the aggregate snapshot and EV field allowlists.
 
 The integration polls every five minutes by default. Do not lower the interval
 unnecessarily; the portal is not a documented public API.
@@ -141,7 +164,10 @@ The complete contract is in
 
 ## Security and privacy
 
-- Only allowlisted aggregate fields are retained.
+- Only allowlisted aggregate and EV status/mode/power fields are retained.
+- EV device identity is a SHA-256 digest scoped to the site and reporter ID;
+  provider device names and serial numbers are not published. The hash provides
+  a stable opaque identifier, not encryption or guaranteed anonymity.
 - Unknown fields are ignored, including site IDs, addresses, serial numbers,
   credentials, cookies, tokens, and arbitrary metadata.
 - Credentials, site ID, local endpoint, and shared secret are redacted from

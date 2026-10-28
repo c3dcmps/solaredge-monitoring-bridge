@@ -1,12 +1,14 @@
 {
   "domain": "solaredge_one_bridge",
   "name": "SolarEdge Monitoring Bridge",
-  "codeowners": ["@shogun301"],
+  "codeowners": [
+    "@shogun301"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/shogun301/solaredge-monitoring-bridge",
   "integration_type": "service",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/shogun301/solaredge-monitoring-bridge/issues",
   "requirements": [],
-  "version": "0.1.4"
+  "version": "0.2.0"
 }

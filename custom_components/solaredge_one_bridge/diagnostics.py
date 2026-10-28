@@ -32,6 +32,7 @@ async def async_get_config_entry_diagnostics(
     """Return structure and health without raw metric values or identifiers."""
     coordinator = entry.runtime_data
     snapshot = coordinator.data
+    ev = coordinator.ev_coordinator
     return {
         "config_entry": async_redact_data(entry.as_dict(), TO_REDACT),
         "bridge": {
@@ -44,5 +45,10 @@ async def async_get_config_entry_diagnostics(
             "available_metrics": sorted(snapshot.site),
             "completeness": dict(snapshot.completeness),
             "operating_plan_available": snapshot.storage_operating_plan is not None,
+        },
+        "ev_chargers": {
+            "enabled": ev is not None,
+            "last_update_success": ev.last_update_success if ev else None,
+            "device_count": len(ev.data) if ev and ev.last_update_success else None,
         },
     }

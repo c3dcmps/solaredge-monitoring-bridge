@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
 COMPONENT = Path(__file__).parents[1] / "custom_components" / "solaredge_one_bridge"
-PACKAGE = "solaredge_one_bridge"
+PACKAGE = "custom_components.solaredge_one_bridge"
 if PACKAGE not in sys.modules:
     package = types.ModuleType(PACKAGE)
     package.__path__ = [str(COMPONENT)]

@@ -14,7 +14,7 @@ COMPONENT = Path(__file__).parents[1] / "custom_components" / "solaredge_one_bri
 
 
 def _load_module(name: str):
-    package_name = "solaredge_one_bridge"
+    package_name = "custom_components.solaredge_one_bridge"
     if package_name not in sys.modules:
         package = types.ModuleType(package_name)
         package.__path__ = [str(COMPONENT)]

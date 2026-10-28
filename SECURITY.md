@@ -14,5 +14,10 @@ or propagation of non-allowlisted provider data are security-sensitive.
 The direct portal mode depends on an undocumented private interface. A provider
 layout or authentication change is expected to fail closed. It must not be
 worked around by broadening hosts, accepting arbitrary forms/redirects, logging
-responses, or weakening the aggregate output allowlist.
+responses, or weakening the aggregate and EV output allowlists. EV discovery uses
+the existing private session and a fixed HTTPS GET endpoint. Only an opaque
+site-scoped device key and bounded status, mode and power fields are retained.
+The stable device key is hashed, not encrypted; it is not a promise of anonymity.
+Diagnostics include EV health and device counts, never provider identifiers or
+raw device responses.
 
