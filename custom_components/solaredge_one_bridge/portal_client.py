@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from collections.abc import Mapping
 from datetime import UTC, datetime, tzinfo
@@ -10,10 +11,18 @@ from typing import Any
 
 import aiohttp
 
+from custom_components.solaredge_one_bridge.const import MAX_FUTURE_SKEW_SECONDS
+from custom_components.solaredge_one_bridge.ev_charger import (
+    EVChargerSnapshot,
+    parse_ev_chargers,
+)
+from custom_components.solaredge_one_bridge.portal import SolarEdgePortalError
+
 from .model import SolarEdgeSnapshot, parse_snapshot
 from .portal import SolarEdgePortalClient, SolarEdgePortalConfig
 
 LIFETIME_CACHE_SECONDS = 6 * 60 * 60
+_LOGGER = logging.getLogger(__name__)
 
 
 class SolarEdgePortalSnapshotClient:
@@ -52,6 +61,43 @@ class SolarEdgePortalSnapshotClient:
         snapshot = parse_snapshot(payload)
         snapshot.validate_freshness(self._max_snapshot_age_seconds)
         return snapshot
+
+    async def async_get_ev_chargers(self) -> dict[str, EVChargerSnapshot]:
+        """Read EV status and associate fresh aggregate power only when unambiguous."""
+        devices, power = await asyncio.gather(
+            self._portal.ev_chargers(), self._async_ev_power()
+        )
+        return parse_ev_chargers(
+            devices, site_id=self._portal.config.site_id, power_w=power
+        )
+
+    async def _async_ev_power(self) -> object:
+        try:
+            flow = await self._portal.live_power_flow()
+        except SolarEdgePortalError:
+            _LOGGER.debug("SolarEdge EV power flow is unavailable")
+            return None
+        timestamp = flow.get("last_update_time")
+        if not isinstance(timestamp, str):
+            return None
+        try:
+            observed_at = datetime.fromisoformat(
+                timestamp.strip().replace("Z", "+00:00")
+            )
+        except ValueError:
+            return None
+        if observed_at.tzinfo is None:
+            observed_at = observed_at.replace(tzinfo=self._time_zone)
+        age = (datetime.now(UTC) - observed_at).total_seconds()
+        if not -MAX_FUTURE_SKEW_SECONDS <= age <= self._max_snapshot_age_seconds:
+            return None
+        components = flow.get("components", {})
+        component = (
+            components.get("ev_charger") if isinstance(components, Mapping) else None
+        )
+        if not isinstance(component, Mapping):
+            return None
+        return component.get("current_power_w", component.get("power_w"))
 
     async def _async_lifetime_energy(self) -> dict[str, Any]:
         now = time.monotonic()
@@ -211,9 +257,7 @@ def _build_snapshot_payload(
         "schema_version": 1,
         "connected": True,
         "provider": "solaredge_monitoring_portal",
-        "observed_at": _provider_observed_at(
-            flow.get("last_update_time"), time_zone
-        ),
+        "observed_at": _provider_observed_at(flow.get("last_update_time"), time_zone),
         "site": {key: value for key, value in site.items() if value is not None},
         "completeness": {key: value is not None for key, value in site.items()},
     }

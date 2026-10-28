@@ -28,6 +28,7 @@ _OAUTH_AUTHORIZE_URL = "https://login.solaredge.com/oauth2/authorize"
 _OAUTH_TOKEN_URL = "https://login.solaredge.com/oauth2/token"
 _AUTH_EXCHANGE_URL = "https://monitoring.solaredge.com/services/auth/token?legacy=false"
 _DASHBOARD_BASE_URL = "https://monitoring.solaredge.com/services/dashboard"
+_DEVICES_BASE_URL = "https://monitoring.solaredge.com/services/api/homeautomation/v1.0"
 
 _LOGIN_HOST = "login.solaredge.com"
 _MONITORING_HOST = "monitoring.solaredge.com"
@@ -165,6 +166,16 @@ class SolarEdgePortalClient:
             "live power", f"/live-power/sites/{self.config.site_id}"
         )
         return _normalize_power_payload(payload)
+
+    async def ev_chargers(self) -> Any:
+        """Read device discovery using the existing private portal session."""
+        await self._ensure_login()
+        return await self._authenticated_get(
+            "EV charger discovery",
+            f"/sites/{self.config.site_id}/devices",
+            None,
+            device_list=True,
+        )
 
     async def live_power_flow(self) -> dict[str, Any]:
         params = [("components", component) for component in _POWER_FLOW_COMPONENTS]
@@ -367,11 +378,14 @@ class SolarEdgePortalClient:
         operation: str,
         path: str,
         params: Sequence[tuple[str, str]] | None,
+        *,
+        device_list: bool = False,
     ) -> Any:
+        base_url = _DEVICES_BASE_URL if device_list else _DASHBOARD_BASE_URL
         for attempt in range(2):
             response = await self._request(
                 "GET",
-                f"{_DASHBOARD_BASE_URL}{path}",
+                f"{base_url}{path}",
                 params=params,
                 headers=self._auth_headers(),
                 allow_redirects=False,

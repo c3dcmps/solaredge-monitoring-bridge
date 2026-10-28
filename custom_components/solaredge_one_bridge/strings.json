@@ -117,6 +117,15 @@
       },
       "storage_operating_plan": {
         "name": "Storage operating plan"
+      },
+      "ev_charger_status": {
+        "name": "Charger status"
+      },
+      "ev_charger_mode": {
+        "name": "Activation mode"
+      },
+      "ev_charger_power": {
+        "name": "Charging power"
       }
     }
   }

@@ -16,6 +16,8 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from custom_components.solaredge_one_bridge.ev_sensor import async_setup_ev_sensors
+
 from . import SolarEdgeBridgeConfigEntry
 from .const import DOMAIN
 from .coordinator import SolarEdgeBridgeCoordinator
@@ -96,6 +98,7 @@ async def async_setup_entry(
             SolarEdgeStorageOperatingPlanSensor(entry.runtime_data),
         ]
     )
+    await async_setup_ev_sensors(hass, entry, async_add_entities)
 
 
 def _diagnostic_attributes(
