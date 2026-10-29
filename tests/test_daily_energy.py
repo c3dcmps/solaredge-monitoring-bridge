@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 import asyncio
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, tzinfo
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
@@ -231,7 +231,9 @@ def _sensor_module():
             POWER="power", BATTERY="battery", ENERGY="energy"
         ),
         "SensorStateClass": SimpleNamespace(
-            MEASUREMENT="measurement", TOTAL_INCREASING="total_increasing"
+            MEASUREMENT="measurement",
+            TOTAL_INCREASING="total_increasing",
+            TOTAL="total",
         ),
         "SensorEntity": type("Sensor", (), {}),
         "CoordinatorEntity": _CoordinatorEntity,
@@ -242,6 +244,7 @@ def _sensor_module():
         "DeviceInfo": lambda **kwargs: kwargs,
         "DOMAIN": "solaredge_one_bridge",
         "datetime": datetime,
+        "UTC": UTC,
         "date": date,
         "tzinfo": tzinfo,
         "ZoneInfo": ZoneInfo,
@@ -275,7 +278,7 @@ def test_daily_entities_are_portal_only_with_resettable_energy_metadata(
     assert len(daily) == expected_daily
     for item in daily:
         assert item.entity_description.native_unit_of_measurement == "kWh"
-        assert item.entity_description.state_class == "total_increasing"
+        assert item.entity_description.state_class == "total"
 
 
 def test_daily_sensor_rejects_previous_day_and_exposes_calendar_date(monkeypatch):
@@ -391,5 +394,59 @@ def test_daily_data_is_retrieved_on_first_poll_after_restart(monkeypatch):
         ).async_get_snapshot()
         assert first.value("production_energy_today_kwh") == 12.3
         assert restarted.value("production_energy_today_kwh") == 12.3
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize(
+    "start, previous_reset, next_reset",
+    [
+        (
+            datetime(2026, 10, 29, 23, 59, tzinfo=ZONE),
+            "2026-10-28T23:00:00+00:00",
+            "2026-10-29T23:00:00+00:00",
+        ),
+        (
+            datetime(2026, 3, 29, 23, 59, tzinfo=ZONE),
+            "2026-03-28T23:00:00+00:00",
+            "2026-03-29T22:00:00+00:00",
+        ),
+        (
+            datetime(2026, 10, 25, 23, 59, tzinfo=ZONE),
+            "2026-10-24T22:00:00+00:00",
+            "2026-10-25T23:00:00+00:00",
+        ),
+    ],
+)
+def test_known_reset_survives_missing_midnight_reading_and_higher_next_total(
+    monkeypatch, start, previous_reset, next_reset
+):
+    async def exercise():
+        clock = _clock(monkeypatch, start)
+        tomorrow = start.date() + timedelta(days=1)
+        client = _client(
+            clock,
+            [_summary(start.date(), production=1), _summary(tomorrow, production=2)],
+        )
+        module = _sensor_module()
+        module["datetime"] = adapter.datetime
+        coordinator = SimpleNamespace(
+            data=await client.async_get_snapshot(), last_update_success=True
+        )
+        description = next(
+            item
+            for item in module["DAILY_SENSOR_DESCRIPTIONS"]
+            if item.key == "production_energy_today_kwh"
+        )
+        entity = module["SolarEdgeBridgeSensor"](
+            coordinator, description, time_zone=ZONE
+        )
+        assert entity.native_value == 1
+        assert entity.last_reset.isoformat() == previous_reset
+        clock.now += timedelta(hours=2)
+        clock.elapsed += 7200
+        coordinator.data = await client.async_get_snapshot()
+        assert entity.native_value == 2
+        assert entity.last_reset.isoformat() == next_reset
 
     asyncio.run(exercise())

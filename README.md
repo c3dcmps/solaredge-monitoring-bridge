@@ -73,7 +73,9 @@ missing or failed daily readings are unavailable, not zero. SolarEdge may publis
 measurements with a delay. The actual refresh also depends on the integration's
 polling interval (60 seconds to one hour).
 
-These are energy sensors with `total_increasing` state class and a daily reset.
+These are energy sensors with `total` state class and an explicit `last_reset`
+at local midnight. This identifies a new daily cycle even when an outage spans
+midnight and the first new reading is higher than the last value of the old day.
 The existing lifetime counters retain their entity IDs and six-hour cache.
 Daily-only request failures leave power and lifetime readings running. No new
 credentials, permissions or configuration options are needed, and the optional

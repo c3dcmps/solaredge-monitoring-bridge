@@ -39,3 +39,7 @@ on the next normal integration poll (60 seconds on the installed instance).
 
 - Baseline: 133 tests and 6 subtests pass on main 722c00f.
 - Execution is inline; the user approved the described six-sensor change.
+- Independent review identified a missed-reset statistics case after an outage.
+  Ruling: daily sensors use `TOTAL` plus explicit UTC `last_reset` at local midnight;
+  lifetime sensors retain their existing metadata. Three regressions cover regular,
+  spring and autumn days with a higher first total on the new day (observed red).

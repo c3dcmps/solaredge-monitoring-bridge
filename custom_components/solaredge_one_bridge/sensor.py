@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, tzinfo
+from datetime import UTC, datetime, tzinfo
 from zoneinfo import ZoneInfo
 
 from homeassistant.components.sensor import (
@@ -96,7 +96,7 @@ DAILY_SENSOR_DESCRIPTIONS = tuple(
         translation_key=key,
         device_class=SensorDeviceClass.ENERGY,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         suggested_display_precision=3,
     )
     for key in sorted(DAILY_ENERGY_KEYS)
@@ -174,6 +174,20 @@ class SolarEdgeBridgeSensor(
             and self.coordinator.data.daily_energy_date
             == datetime.now(self._time_zone).date()
         )
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Identify each daily cycle by its local midnight, expressed in UTC."""
+        selected = self.coordinator.data.daily_energy_date
+        if (
+            self.entity_description.key not in DAILY_ENERGY_KEYS
+            or selected is None
+            or self._time_zone is None
+        ):
+            return None
+        return datetime.combine(
+            selected, datetime.min.time(), self._time_zone
+        ).astimezone(UTC)
 
     @property
     def available(self) -> bool:
