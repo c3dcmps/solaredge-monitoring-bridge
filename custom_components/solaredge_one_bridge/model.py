@@ -38,7 +38,7 @@ ENERGY_KEYS: Final = frozenset(
 PERCENTAGE_KEYS: Final = frozenset({"battery_state_of_energy_pct"})
 DAILY_ENERGY_KEYS: Final = frozenset(
     key.replace("_kwh", "_today_kwh") for key in ENERGY_KEYS
-)
+) | frozenset({"grid_to_home_energy_today_kwh"})
 METRIC_KEYS: Final = POWER_KEYS | ENERGY_KEYS | DAILY_ENERGY_KEYS | PERCENTAGE_KEYS
 STORAGE_STATUS_KEYS: Final = frozenset(
     {

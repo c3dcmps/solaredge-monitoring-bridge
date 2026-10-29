@@ -56,3 +56,7 @@ on the next normal integration poll (60 seconds on the installed instance).
   battery labels are explicit about solar-to-battery and battery-to-home because
   they use production/consumption distribution fields, not whole-battery totals.
   Lifetime battery counters keep their prior behavior.
+- Scope addition approved after app comparison: add a seventh daily sensor for
+  grid energy supplied directly to the home, from consumption distribution.
+  Keep it separate from total grid import, which also includes battery charging
+  and is the relevant measure for purchased energy. Reuse the same daily request.
