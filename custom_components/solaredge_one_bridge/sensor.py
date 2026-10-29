@@ -23,6 +23,9 @@ from custom_components.solaredge_one_bridge.const import (
     CONF_TIME_ZONE,
     MODE_PORTAL,
 )
+from custom_components.solaredge_one_bridge.ev_schedule_sensor import (
+    async_setup_ev_schedule_sensors,
+)
 from custom_components.solaredge_one_bridge.ev_sensor import async_setup_ev_sensors
 from custom_components.solaredge_one_bridge.model import DAILY_ENERGY_KEYS
 
@@ -129,6 +132,7 @@ async def async_setup_entry(
             ]
         )
     await async_setup_ev_sensors(hass, entry, async_add_entities)
+    await async_setup_ev_schedule_sensors(hass, entry, async_add_entities)
 
 
 def _diagnostic_attributes(

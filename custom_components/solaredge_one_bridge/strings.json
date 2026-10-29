@@ -147,6 +147,12 @@
       },
       "grid_to_home_energy_today_kwh": {
         "name": "Grid energy supplied to home today"
+      },
+      "ev_charging_schedules": {
+        "name": "Charging schedules"
+      },
+      "ev_next_scheduled_charge": {
+        "name": "Next scheduled charge"
       }
     },
     "button": {

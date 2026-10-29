@@ -15,7 +15,9 @@ from custom_components.solaredge_one_bridge.const import MAX_FUTURE_SKEW_SECONDS
 from custom_components.solaredge_one_bridge.ev_charger import (
     EVChargerSnapshot,
     parse_ev_chargers,
+    parse_ev_schedules,
 )
+from custom_components.solaredge_one_bridge.ev_schedule import EVScheduleSnapshot
 from custom_components.solaredge_one_bridge.model import (
     DAILY_ENERGY_KEYS,
     SolarEdgeSnapshot,
@@ -126,6 +128,13 @@ class SolarEdgePortalSnapshotClient:
     async def async_set_ev_charging(self, key: str, *, charging: bool) -> None:
         """Submit a manual request through the existing authenticated portal."""
         await self._portal.set_ev_charging(key, charging=charging)
+
+    async def async_get_ev_schedules(self) -> dict[str, EVScheduleSnapshot]:
+        """Read schedule metadata using only the existing authenticated device GET."""
+        payload = await self._portal.ev_chargers()
+        return parse_ev_schedules(
+            payload, site_id=self._portal.config.site_id, time_zone=self._time_zone
+        )
 
     @property
     def ev_control_diagnostics(self) -> dict[str, bool]:
