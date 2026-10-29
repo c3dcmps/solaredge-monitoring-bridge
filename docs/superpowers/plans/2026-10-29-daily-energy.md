@@ -25,13 +25,13 @@ on the next normal integration poll (60 seconds on the installed instance).
 
 ## Tasks
 
-- [ ] Add failing tests for snapshot mapping, date scoping, caching, midnight/DST,
+- [x] Add failing tests for snapshot mapping, date scoping, caching, midnight/DST,
   network failure/recovery, sensor availability and portal-only setup.
-- [ ] Extend model.py, portal_client.py and sensor.py with date-tagged daily metrics;
+- [x] Extend model.py, portal_client.py and sensor.py with date-tagged daily metrics;
   use existing portal.current_day_energy_summary(local_date=...) and field mapping.
-- [ ] Add English names, README behavior and version 0.4.0, preserving cumulative sensors.
-- [ ] Run pytest, Ruff, targeted ty, privacy scan and whitespace checks.
-- [ ] Review the complete change independently, fix substantive findings with regressions.
+- [x] Add English names, README behavior and version 0.4.0, preserving cumulative sensors.
+- [x] Run pytest, Ruff, targeted ty, privacy scan and whitespace checks.
+- [x] Review the complete change independently, fix substantive findings with regressions.
 - [ ] Open and merge a PR, publish v0.4.0, install through HACS and restart HA.
 - [ ] Verify six daily states, units/date, existing counters, buttons and integration logs.
 
@@ -43,3 +43,10 @@ on the next normal integration poll (60 seconds on the installed instance).
   Ruling: daily sensors use `TOTAL` plus explicit UTC `last_reset` at local midnight;
   lifetime sensors retain their existing metadata. Three regressions cover regular,
   spring and autumn days with a higher first total on the new day (observed red).
+
+- Final verification: 163 tests and 6 subtests pass, Ruff and targeted ty pass,
+  privacy scan and whitespace checks pass. Independent review approved 4e9466b.
+- Live staging: all six daily sensors expose numeric kWh values, the current
+  local calendar date and the correct UTC last_reset. Existing lifetime/power
+  entities and EV buttons remain available; polling options remain at 60 seconds.
+  No integration-specific runtime errors were found after restart.
