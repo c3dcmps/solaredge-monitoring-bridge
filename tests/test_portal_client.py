@@ -210,6 +210,8 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
     coordinator_factory = Mock(return_value=coordinator)
     ev_coordinator = types.SimpleNamespace(async_refresh=AsyncMock())
     ev_factory = Mock(return_value=ev_coordinator)
+    schedule_coordinator = types.SimpleNamespace(async_refresh=AsyncMock())
+    schedule_factory = Mock(return_value=schedule_coordinator)
     hass = types.SimpleNamespace(
         config_entries=types.SimpleNamespace(async_forward_entry_setups=AsyncMock())
     )
@@ -236,6 +238,7 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
         SolarEdgePortalSnapshotClient=factory,
         SolarEdgeBridgeCoordinator=coordinator_factory,
         SolarEdgeEVCoordinator=ev_factory,
+        SolarEdgeEVScheduleCoordinator=schedule_factory,
         async_create_clientsession=create_session,
         async_get_clientsession=shared_session,
         ConfigEntryNotReady=ConfigEntryNotReady,
@@ -250,6 +253,8 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
         create_session.assert_called_once_with(hass)
         assert entry.runtime_data is coordinator
         assert coordinator.ev_coordinator is ev_coordinator
+        assert coordinator.ev_schedule_coordinator is schedule_coordinator
+        schedule_coordinator.async_refresh.assert_awaited_once()
         ev_coordinator.async_refresh.assert_awaited_once()
         coordinator.async_config_entry_first_refresh.assert_awaited_once()
         hass.config_entries.async_forward_entry_setups.assert_awaited_once_with(
@@ -261,6 +266,7 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
         factory.assert_not_called()
         coordinator_factory.assert_not_called()
         ev_factory.assert_not_called()
+        schedule_factory.assert_not_called()
         create_session.assert_not_called()
     resolver.assert_awaited_once_with(entry.data["time_zone"])
     shared_session.assert_not_called()

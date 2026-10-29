@@ -8,6 +8,12 @@ import re
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime, tzinfo
+
+from custom_components.solaredge_one_bridge.ev_schedule import (
+    EVScheduleSnapshot,
+    parse_ev_schedule,
+)
 
 _REPORTER_ID = re.compile(r"[1-9][0-9]{0,31}")
 _STATUS = re.compile(r"[A-Z][A-Z0-9_]{0,63}")
@@ -86,6 +92,39 @@ def parse_ev_chargers(
             activation_mode=_status(device.get("activationMode")),
             power_w=power,
         )
+    return result
+
+
+def parse_ev_schedules(
+    payload: object, *, site_id: str, time_zone: tzinfo, now: datetime | None = None
+) -> dict[str, EVScheduleSnapshot]:
+    """Route read-only schedules only to uniquely identified, site-scoped devices.
+
+    Args:
+        payload: Device-list response from the fixed SolarEdge endpoint.
+        site_id: Configured site used to scope each opaque device identity.
+        time_zone: Site timezone for matching local weekly clocks.
+        now: Aware observation time passed to schedule validation.
+
+    Returns:
+        Sanitized schedule snapshots keyed exactly like existing EV sensors.
+
+    Raises:
+        ValueError: If discovery does not contain a valid device-list envelope.
+    """
+    known = parse_ev_chargers(payload, site_id=site_id)
+    if not isinstance(payload, Mapping):
+        raise ValueError("SolarEdge EV schedule response is not a device list")
+    result = {}
+    for device in payload["devicesByType"].get("EV_CHARGER", []):
+        if not isinstance(device, Mapping):
+            continue
+        identity = _identity(device.get("reporterId"))
+        if identity is None:
+            continue
+        key = hashlib.sha256(f"{site_id}:{identity}".encode()).hexdigest()
+        if key in known:
+            result[key] = parse_ev_schedule(device, time_zone=time_zone, now=now)
     return result
 
 

@@ -98,7 +98,7 @@ so this breakdown adds no network calls.
 
 The integration discovers EV chargers visible through the site's private
 homeautomation device-list endpoint. Each charger gets a separate device with
-three read-only sensors:
+three read-only status/power sensors:
 
 - Charger status, using SolarEdge's reported value, such as `PLUGGED_IN`.
 - Activation mode, such as `AUTO` or `MANUAL`.
@@ -117,6 +117,38 @@ EV discovery shares the configured polling interval and private portal session.
 It reuses cached power-flow responses when available; one polling cycle can issue
 multiple HTTP requests. The local snapshot bridge does not discover EV devices.
 The local bridge remains read-only. No local KEBA or inverter control is used.
+
+### Read-only EV charging schedules
+
+Each discovered portal charger also has two schedule sensors on the same device:
+
+- **Charging schedules** counts all configured fixed weekly windows. Its `schedules`
+  attribute includes each window's `enabled` flag, `days`, `start`, `end`, and
+  `crosses_midnight`. Disabled configured windows remain visible. `enabled_count`
+  counts only explicitly enabled windows.
+- **Next scheduled charge** is the next start timestamp explicitly reported by
+  SolarEdge; `end` gives its end timestamp. A reported interval is accepted only
+  when it is in the future and matches an enabled window in the site's timezone.
+  Disabled windows never supply the next charge. There is no inferred next-date
+  calculation when SolarEdge does not report one.
+
+Schedule metadata is fetched every **five minutes**, starting at setup, using the
+existing authenticated device-list GET. `last_checked` records the successful
+observation time and `time_zone` identifies the configured site timezone. This
+independent poll adds one device-list GET per five minutes; existing EV status,
+power and controls retain their configured polling interval.
+
+An empty list or all-disabled list is valid: the next-start sensor is `unknown`
+with `reason: no_enabled_schedule`. Missing or malformed configuration is
+`unavailable`, not an empty schedule. Other safe `reason` values explain an absent
+next interval, such as `not_reported`, `not_future`, or
+`does_not_match_enabled_schedule`. Failed polls make only these sensors
+unavailable; they do not disable EV buttons or site telemetry.
+
+Only fixed weekly start/end windows are supported. Smart-saver schedules are not
+interpreted as fixed windows. Schedule and charger identifiers are not exposed.
+These sensors do not edit, enable or disable schedules. A planned window does not
+guarantee physical charging: the vehicle's settings and readiness still apply.
 
 ### Manual EV charging buttons
 
