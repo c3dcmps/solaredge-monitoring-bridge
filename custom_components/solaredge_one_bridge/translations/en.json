@@ -126,6 +126,24 @@
       },
       "ev_charger_power": {
         "name": "Charging power"
+      },
+      "production_energy_today_kwh": {
+        "name": "Production energy today"
+      },
+      "consumption_energy_today_kwh": {
+        "name": "Consumption energy today"
+      },
+      "grid_import_energy_today_kwh": {
+        "name": "Grid import energy today"
+      },
+      "grid_export_energy_today_kwh": {
+        "name": "Grid export energy today"
+      },
+      "battery_charge_energy_today_kwh": {
+        "name": "Battery energy charged today"
+      },
+      "battery_discharge_energy_today_kwh": {
+        "name": "Battery energy discharged today"
       }
     },
     "button": {

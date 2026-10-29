@@ -10,7 +10,7 @@ import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any, Final
 
 from .const import MAX_FUTURE_SKEW_SECONDS, SNAPSHOT_SCHEMA_VERSION
@@ -36,7 +36,10 @@ ENERGY_KEYS: Final = frozenset(
     }
 )
 PERCENTAGE_KEYS: Final = frozenset({"battery_state_of_energy_pct"})
-METRIC_KEYS: Final = POWER_KEYS | ENERGY_KEYS | PERCENTAGE_KEYS
+DAILY_ENERGY_KEYS: Final = frozenset(
+    key.replace("_kwh", "_today_kwh") for key in ENERGY_KEYS
+)
+METRIC_KEYS: Final = POWER_KEYS | ENERGY_KEYS | DAILY_ENERGY_KEYS | PERCENTAGE_KEYS
 STORAGE_STATUS_KEYS: Final = frozenset(
     {
         "storage_operating_plan",
@@ -67,6 +70,7 @@ class SolarEdgeSnapshot:
     storage_operating_plan: str | None
     storage_operating_plan_active: bool | None
     storage_operating_plan_block_count: int | None
+    daily_energy_date: date | None = None
 
     def value(self, key: str) -> float | None:
         """Return a metric only when present and not explicitly incomplete."""
@@ -116,6 +120,15 @@ def _parse_timestamp(value: Any) -> datetime | None:
     if parsed.tzinfo is None:
         raise InvalidSnapshot("observed_at must include a timezone")
     return parsed
+
+
+def _parse_daily_date(value: Any) -> date | None:
+    if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _parse_metric(key: str, value: Any) -> float | None:
@@ -194,6 +207,7 @@ def parse_snapshot(payload: Any) -> SolarEdgeSnapshot:
         connected=connected,
         observed_at=observed_at,
         provider=_parse_bounded_label(payload.get("provider"), PROVIDER_PATTERN),
+        daily_energy_date=_parse_daily_date(payload.get("daily_energy_date")),
         site=site,
         completeness=completeness,
         storage_operating_plan=_parse_bounded_label(

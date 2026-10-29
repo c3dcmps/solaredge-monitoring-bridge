@@ -43,7 +43,7 @@ provides the native SolarEdge manual EV charging actions.
 
 ## Entities
 
-The integration creates up to fourteen whole-site entities. Missing or explicitly
+The integration creates fourteen base whole-site entities. Missing or explicitly
 incomplete fields are unavailable rather than guessed.
 
 - Production and consumption power
@@ -57,6 +57,27 @@ incomplete fields are unavailable rather than guessed.
   attributes
 
 Power is expressed in W, energy in kWh, and state of energy in percent.
+
+### Daily energy (portal mode)
+
+Six additional sensors report **today's** production, consumption, grid import,
+grid export, battery energy charged and battery energy discharged in kWh. They
+use the portal's daily totals rather than differences between lifetime readings,
+so restarting Home Assistant during the day still retrieves the full available
+daily totals. Each sensor has a `date` attribute in the configured site timezone.
+
+Daily totals are fetched on the first poll and then cached for five minutes.
+The cache is invalidated on the first poll after local midnight, including days
+with daylight-saving changes. Yesterday's values are never displayed as today's;
+missing or failed daily readings are unavailable, not zero. SolarEdge may publish
+measurements with a delay. The actual refresh also depends on the integration's
+polling interval (60 seconds to one hour).
+
+These are energy sensors with `total_increasing` state class and a daily reset.
+The existing lifetime counters retain their entity IDs and six-hour cache.
+Daily-only request failures leave power and lifetime readings running. No new
+credentials, permissions or configuration options are needed, and the optional
+local snapshot bridge does not create these portal-specific daily entities.
 
 ### EV chargers (portal mode)
 

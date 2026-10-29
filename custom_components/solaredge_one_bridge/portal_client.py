@@ -6,7 +6,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Mapping
-from datetime import UTC, datetime, tzinfo
+from datetime import UTC, date, datetime, tzinfo
 from typing import Any
 
 import aiohttp
@@ -16,12 +16,20 @@ from custom_components.solaredge_one_bridge.ev_charger import (
     EVChargerSnapshot,
     parse_ev_chargers,
 )
-from custom_components.solaredge_one_bridge.portal import SolarEdgePortalError
-
-from .model import SolarEdgeSnapshot, parse_snapshot
-from .portal import SolarEdgePortalClient, SolarEdgePortalConfig
+from custom_components.solaredge_one_bridge.model import (
+    DAILY_ENERGY_KEYS,
+    SolarEdgeSnapshot,
+    parse_snapshot,
+)
+from custom_components.solaredge_one_bridge.portal import (
+    SolarEdgePortalAuthenticationError,
+    SolarEdgePortalClient,
+    SolarEdgePortalConfig,
+    SolarEdgePortalError,
+)
 
 LIFETIME_CACHE_SECONDS = 6 * 60 * 60
+DAILY_CACHE_SECONDS = 5 * 60
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -51,16 +59,60 @@ class SolarEdgePortalSnapshotClient:
         self._max_snapshot_age_seconds = max_snapshot_age_seconds
         self._lifetime_cache: tuple[float, dict[str, Any]] | None = None
         self._lifetime_lock = asyncio.Lock()
+        self._daily_cache: tuple[date, float, dict[str, Any]] | None = None
+        self._daily_lock = asyncio.Lock()
 
     async def async_get_snapshot(self) -> SolarEdgeSnapshot:
-        """Fetch live flow plus bounded-cache lifetime counters."""
-        flow, lifetime = await asyncio.gather(
-            self._portal.live_power_flow(), self._async_lifetime_energy()
+        """Fetch live flow and separately cached lifetime and daily counters."""
+        flow, lifetime, daily = await asyncio.gather(
+            self._portal.live_power_flow(),
+            self._async_lifetime_energy(),
+            self._async_daily_energy(),
         )
         payload = _build_snapshot_payload(flow, lifetime, self._time_zone)
+        payload["daily_energy_date"] = daily.get("start_date")
+        daily_values = _daily_energy_values(daily)
+        payload["site"].update(daily_values)
+        payload["completeness"].update(
+            {key: key in daily_values for key in DAILY_ENERGY_KEYS}
+        )
         snapshot = parse_snapshot(payload)
         snapshot.validate_freshness(self._max_snapshot_age_seconds)
         return snapshot
+
+    async def _async_daily_energy(self) -> dict[str, Any]:
+        async with self._daily_lock:
+            selected = datetime.now(self._time_zone).date()
+            now = time.monotonic()
+            cached = self._daily_cache
+            if (
+                cached
+                and cached[0] == selected
+                and now - cached[1] < DAILY_CACHE_SECONDS
+            ):
+                return cached[2]
+            try:
+                result = await self._portal.current_day_energy_summary(
+                    local_date=selected
+                )
+            except SolarEdgePortalAuthenticationError:
+                raise
+            except SolarEdgePortalError:
+                self._daily_cache = None
+                _LOGGER.warning(
+                    "SolarEdge daily energy is unavailable; retrying on the next poll"
+                )
+                return {}
+            expected = selected.isoformat()
+            if (
+                datetime.now(self._time_zone).date() != selected
+                or result.get("start_date") != expected
+                or result.get("end_date") != expected
+            ):
+                self._daily_cache = None
+                return {}
+            self._daily_cache = (selected, now, result)
+            return result
 
     async def async_get_ev_chargers(self) -> dict[str, EVChargerSnapshot]:
         """Read EV status and associate fresh aggregate power only when unambiguous."""
@@ -131,6 +183,32 @@ def _component_number(component: Any, *keys: str) -> float | None:
         if isinstance(value, (int, float)) and not isinstance(value, bool):
             return max(0.0, float(value))
     return None
+
+
+def _daily_energy_values(summary: Mapping[str, Any]) -> dict[str, Any]:
+    """Select daily energy fields; numeric validation stays in the snapshot parser."""
+    totals = summary.get("totals_kwh", {})
+    production = summary.get("production_distribution", {})
+    consumption = summary.get("consumption_distribution", {})
+    if not isinstance(totals, Mapping):
+        totals = {}
+    if not isinstance(production, Mapping):
+        production = {}
+    if not isinstance(consumption, Mapping):
+        consumption = {}
+    values = {
+        "production_energy_today_kwh": totals.get("production"),
+        "consumption_energy_today_kwh": totals.get("consumption"),
+        "grid_import_energy_today_kwh": totals.get("import"),
+        "grid_export_energy_today_kwh": totals.get("export"),
+        "battery_charge_energy_today_kwh": production.get(
+            "production_to_battery_kwh", production.get("storage_kwh")
+        ),
+        "battery_discharge_energy_today_kwh": consumption.get(
+            "consumption_from_battery_kwh", consumption.get("storage_kwh")
+        ),
+    }
+    return {key: value for key, value in values.items() if value is not None}
 
 
 def _component_text(component: Any, *keys: str) -> str:
