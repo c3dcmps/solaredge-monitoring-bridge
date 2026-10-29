@@ -33,17 +33,29 @@ https://github.com/orgs/home-assistant/discussions/302 .
 
 ## Tasks
 
-- [ ] Tests first: disabled/empty/malformed configurations, overnight windows,
+- [x] Tests first: disabled/empty/malformed configurations, overnight windows,
   timestamps in milliseconds, timezone/DST matching, stale/mismatched next windows,
   identity scoping, privacy, coordinator failure/recovery and HA discovery/attributes.
-- [ ] Pure parser in ev_schedule.py; device identity routing in ev_charger.py;
+- [x] Pure parser in ev_schedule.py; device identity routing in ev_charger.py;
   forwarding method in portal_client.py; independent schedule coordinator/sensors;
   initialize it before platform forwarding and register schedule entities.
-- [ ] Document the read-only semantics and add names; version 0.5.0, no dependencies.
-- [ ] Verify tests, Ruff, targeted ty, privacy and whitespace; independent review.
+- [x] Document the read-only semantics and add names; version 0.5.0, no dependencies.
+- [x] Verify tests, Ruff, targeted ty, privacy and whitespace; independent review.
 - [ ] PR/release/install and verify actual configured/disabled slots and next window.
 
 ## Baseline
 
 Main 417a888: 170 tests and 6 subtests pass. Isolated branch
 feat/ev-schedules-readonly. No charger command or schedule write is part of this work.
+
+## Validation
+
+- 210 tests and 6 subtests pass; Ruff, complexity, targeted ty, privacy and
+  whitespace checks pass. Independent review approved 5cc4686.
+- The parser also accepts all eight public reference responses and preserves
+  disabled windows without inventing a next date.
+- Live staging in HA: configured/disabled counts and the provider next interval
+  match the parsed enabled window in the site timezone. The interval correctly
+  spans midnight. Both new sensors share the existing EV device, the integration
+  is loaded and original 60-second polling settings are retained. No integration
+  runtime errors or charger/schedule commands were issued during validation.
