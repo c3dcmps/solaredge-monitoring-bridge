@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, tzinfo
+from zoneinfo import ZoneInfo
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -16,7 +18,13 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from custom_components.solaredge_one_bridge.const import (
+    CONF_MODE,
+    CONF_TIME_ZONE,
+    MODE_PORTAL,
+)
 from custom_components.solaredge_one_bridge.ev_sensor import async_setup_ev_sensors
+from custom_components.solaredge_one_bridge.model import DAILY_ENERGY_KEYS
 
 from . import SolarEdgeBridgeConfigEntry
 from .const import DOMAIN
@@ -82,6 +90,18 @@ SENSOR_DESCRIPTIONS: tuple[SolarEdgeBridgeSensorDescription, ...] = (
     ),
 )
 
+DAILY_SENSOR_DESCRIPTIONS = tuple(
+    SolarEdgeBridgeSensorDescription(
+        key=key,
+        translation_key=key,
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL,
+        suggested_display_precision=3,
+    )
+    for key in sorted(DAILY_ENERGY_KEYS)
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -98,6 +118,16 @@ async def async_setup_entry(
             SolarEdgeStorageOperatingPlanSensor(entry.runtime_data),
         ]
     )
+    if entry.data.get(CONF_MODE) == MODE_PORTAL:
+        time_zone = ZoneInfo(entry.data[CONF_TIME_ZONE])
+        async_add_entities(
+            [
+                SolarEdgeBridgeSensor(
+                    entry.runtime_data, description, time_zone=time_zone
+                )
+                for description in DAILY_SENSOR_DESCRIPTIONS
+            ]
+        )
     await async_setup_ev_sensors(hass, entry, async_add_entities)
 
 
@@ -127,10 +157,37 @@ class SolarEdgeBridgeSensor(
         self,
         coordinator: SolarEdgeBridgeCoordinator,
         description: SolarEdgeBridgeSensorDescription,
+        *,
+        time_zone: tzinfo | None = None,
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{DOMAIN}_{description.key}"
+        self._time_zone = time_zone
+
+    @property
+    def _daily_date_matches(self) -> bool:
+        if self.entity_description.key not in DAILY_ENERGY_KEYS:
+            return True
+        return (
+            self._time_zone is not None
+            and self.coordinator.data.daily_energy_date
+            == datetime.now(self._time_zone).date()
+        )
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Identify each daily cycle by its local midnight, expressed in UTC."""
+        selected = self.coordinator.data.daily_energy_date
+        if (
+            self.entity_description.key not in DAILY_ENERGY_KEYS
+            or selected is None
+            or self._time_zone is None
+        ):
+            return None
+        return datetime.combine(
+            selected, datetime.min.time(), self._time_zone
+        ).astimezone(UTC)
 
     @property
     def available(self) -> bool:
@@ -139,12 +196,13 @@ class SolarEdgeBridgeSensor(
             super().available
             and self.coordinator.data.connected
             and self.coordinator.data.value(self.entity_description.key) is not None
+            and self._daily_date_matches
         )
 
     @property
     def native_value(self) -> float | None:
         """Return the sanitized metric value."""
-        if not self.coordinator.data.connected:
+        if not self.coordinator.data.connected or not self._daily_date_matches:
             return None
         return self.coordinator.data.value(self.entity_description.key)
 
@@ -154,6 +212,11 @@ class SolarEdgeBridgeSensor(
         attributes: dict[str, str | int | bool] = _diagnostic_attributes(
             self.coordinator
         )
+        if (
+            self.entity_description.key in DAILY_ENERGY_KEYS
+            and self.coordinator.data.daily_energy_date is not None
+        ):
+            attributes["date"] = self.coordinator.data.daily_energy_date.isoformat()
         completeness = self.coordinator.data.completeness.get(
             self.entity_description.key
         )

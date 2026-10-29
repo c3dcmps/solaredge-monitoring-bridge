@@ -298,9 +298,10 @@ def test_endpoint_validation_is_local_and_credential_safe() -> None:
     assert not any(client_module.is_local_endpoint(value) for value in rejected)
 
 
-def test_contract_contains_thirteen_metrics_and_three_plan_fields() -> None:
+def test_contract_contains_lifetime_daily_power_and_plan_fields() -> None:
     assert len(model.POWER_KEYS) == 6
     assert len(model.ENERGY_KEYS) == 6
     assert len(model.PERCENTAGE_KEYS) == 1
-    assert len(model.METRIC_KEYS) == 13
+    assert len(model.DAILY_ENERGY_KEYS) == 6
+    assert len(model.METRIC_KEYS) == 19
     assert len(model.STORAGE_STATUS_KEYS) == 3
