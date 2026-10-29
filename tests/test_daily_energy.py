@@ -19,6 +19,7 @@ DAILY_VALUES = {
     "production_energy_today_kwh": 12.3,
     "consumption_energy_today_kwh": 9.8,
     "grid_import_energy_today_kwh": 2.4,
+    "grid_to_home_energy_today_kwh": 1.4,
     "grid_export_energy_today_kwh": 4.9,
     "battery_charge_energy_today_kwh": 3.2,
     "battery_discharge_energy_today_kwh": 2.7,
@@ -36,7 +37,7 @@ def _summary(selected: date, *, production=12.3):
             "export": 4.9,
         },
         "production_distribution": {"storage_kwh": 3.2},
-        "consumption_distribution": {"storage_kwh": 2.7},
+        "consumption_distribution": {"storage_kwh": 2.7, "grid_kwh": 1.4},
         "private": "must-not-propagate",
     }
 
@@ -258,7 +259,7 @@ def _sensor_module():
     return namespace
 
 
-@pytest.mark.parametrize("mode, expected_daily", [("portal", 6), ("bridge", 0)])
+@pytest.mark.parametrize("mode, expected_daily", [("portal", 7), ("bridge", 0)])
 def test_daily_entities_are_portal_only_with_resettable_energy_metadata(
     mode, expected_daily
 ):
@@ -396,6 +397,29 @@ def test_daily_data_is_retrieved_on_first_poll_after_restart(monkeypatch):
         assert restarted.value("production_energy_today_kwh") == 12.3
 
     asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("grid", [None, -1, float("nan"), True, "4.0"])
+def test_missing_or_invalid_grid_to_home_never_falls_back_to_total_import(
+    monkeypatch, grid
+):
+    clock = _clock(monkeypatch, datetime(2026, 10, 29, 12, tzinfo=ZONE))
+    summary = _summary(clock.now.date())
+    summary["consumption_distribution"]["grid_kwh"] = grid
+    result = asyncio.run(_client(clock, [summary]).async_get_snapshot())
+    assert result.value("grid_to_home_energy_today_kwh") is None
+    assert result.value("grid_import_energy_today_kwh") == 2.4
+
+
+@pytest.mark.parametrize("field", ["grid_kwh", "consumption_from_grid_kwh"])
+def test_grid_to_home_is_direct_consumption_not_billed_import(monkeypatch, field):
+    clock = _clock(monkeypatch, datetime(2026, 10, 29, 12, tzinfo=ZONE))
+    summary = _summary(clock.now.date())
+    summary["totals_kwh"]["import"] = 10.2
+    summary["consumption_distribution"] = {field: 4.0}
+    result = asyncio.run(_client(clock, [summary]).async_get_snapshot())
+    assert result.value("grid_import_energy_today_kwh") == 10.2
+    assert result.value("grid_to_home_energy_today_kwh") == 4.0
 
 
 @pytest.mark.parametrize(

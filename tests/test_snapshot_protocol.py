@@ -302,6 +302,6 @@ def test_contract_contains_lifetime_daily_power_and_plan_fields() -> None:
     assert len(model.POWER_KEYS) == 6
     assert len(model.ENERGY_KEYS) == 6
     assert len(model.PERCENTAGE_KEYS) == 1
-    assert len(model.DAILY_ENERGY_KEYS) == 6
-    assert len(model.METRIC_KEYS) == 19
+    assert len(model.DAILY_ENERGY_KEYS) == 7
+    assert len(model.METRIC_KEYS) == 20
     assert len(model.STORAGE_STATUS_KEYS) == 3

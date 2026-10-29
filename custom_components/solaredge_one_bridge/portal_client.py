@@ -200,6 +200,9 @@ def _daily_energy_values(summary: Mapping[str, Any]) -> dict[str, Any]:
         "production_energy_today_kwh": totals.get("production"),
         "consumption_energy_today_kwh": totals.get("consumption"),
         "grid_import_energy_today_kwh": totals.get("import"),
+        "grid_to_home_energy_today_kwh": consumption.get(
+            "consumption_from_grid_kwh", consumption.get("grid_kwh")
+        ),
         "grid_export_energy_today_kwh": totals.get("export"),
         "battery_charge_energy_today_kwh": production.get(
             "production_to_battery_kwh", production.get("storage_kwh")

@@ -144,6 +144,9 @@
       },
       "battery_discharge_energy_today_kwh": {
         "name": "Battery energy supplied to home today"
+      },
+      "grid_to_home_energy_today_kwh": {
+        "name": "Grid energy supplied to home today"
       }
     },
     "button": {
