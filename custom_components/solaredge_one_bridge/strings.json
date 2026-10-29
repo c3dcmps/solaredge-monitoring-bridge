@@ -140,10 +140,10 @@
         "name": "Grid export energy today"
       },
       "battery_charge_energy_today_kwh": {
-        "name": "Battery energy charged today"
+        "name": "Solar energy sent to battery today"
       },
       "battery_discharge_energy_today_kwh": {
-        "name": "Battery energy discharged today"
+        "name": "Battery energy supplied to home today"
       }
     },
     "button": {

@@ -50,3 +50,9 @@ on the next normal integration poll (60 seconds on the installed instance).
   local calendar date and the correct UTC last_reset. Existing lifetime/power
   entities and EV buttons remain available; polling options remain at 60 seconds.
   No integration-specific runtime errors were found after restart.
+- The app comparison exposed a semantic difference: total grid import includes
+  flows not shown in the app's grid-to-home consumption breakdown. A separate
+  Modbus meter history check confirmed the portal's total import. The two daily
+  battery labels are explicit about solar-to-battery and battery-to-home because
+  they use production/consumption distribution fields, not whole-battery totals.
+  Lifetime battery counters keep their prior behavior.

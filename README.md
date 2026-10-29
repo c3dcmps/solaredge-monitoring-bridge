@@ -60,8 +60,9 @@ Power is expressed in W, energy in kWh, and state of energy in percent.
 
 ### Daily energy (portal mode)
 
-Six additional sensors report **today's** production, consumption, grid import,
-grid export, battery energy charged and battery energy discharged in kWh. They
+Six additional sensors report **today's** production, consumption, total grid
+import/export, solar energy sent to the battery and battery energy supplied to
+the home in kWh. They
 use the portal's daily totals rather than differences between lifetime readings,
 so restarting Home Assistant during the day still retrieves the full available
 daily totals. Each sensor has a `date` attribute in the configured site timezone.
@@ -80,6 +81,12 @@ The existing lifetime counters retain their entity IDs and six-hour cache.
 Daily-only request failures leave power and lifetime readings running. No new
 credentials, permissions or configuration options are needed, and the optional
 local snapshot bridge does not create these portal-specific daily entities.
+
+Grid import/export are whole-site totals, including battery-related grid flows.
+They can differ from the app's grid-to-home and solar-to-grid breakdowns. The two
+battery sensors come from those production/consumption breakdowns: they do not
+include grid-to-battery charging or battery-to-grid discharge. These sources also
+underlie the existing lifetime battery sensors, whose behavior is unchanged.
 
 ### EV chargers (portal mode)
 
