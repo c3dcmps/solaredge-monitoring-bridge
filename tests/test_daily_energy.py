@@ -255,6 +255,7 @@ def _sensor_module():
         "CONF_TIME_ZONE": "time_zone",
         "async_setup_ev_sensors": AsyncMock(),
         "async_setup_ev_schedule_sensors": AsyncMock(),
+        "async_setup_battery_configuration_sensors": AsyncMock(),
     }
     exec(compile(module, str(path), "exec"), namespace)
     return namespace

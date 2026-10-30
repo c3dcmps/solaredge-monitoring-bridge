@@ -11,6 +11,10 @@ from typing import Any
 
 import aiohttp
 
+from custom_components.solaredge_one_bridge.battery_configuration import (
+    BatteryConfigurationSnapshot,
+    parse_battery_configuration,
+)
 from custom_components.solaredge_one_bridge.const import MAX_FUTURE_SKEW_SECONDS
 from custom_components.solaredge_one_bridge.ev_charger import (
     EVChargerSnapshot,
@@ -134,6 +138,28 @@ class SolarEdgePortalSnapshotClient:
         payload = await self._portal.ev_chargers()
         return parse_ev_schedules(
             payload, site_id=self._portal.config.site_id, time_zone=self._time_zone
+        )
+
+    async def async_get_battery_configuration(self) -> BatteryConfigurationSnapshot:
+        """Read both settings endpoints, preserving independently successful data."""
+        results = await asyncio.gather(
+            self._portal.battery_configuration(),
+            self._portal.battery_reserve(),
+            return_exceptions=True,
+        )
+        payloads = []
+        for name, result in zip(("mode", "reserve"), results, strict=True):
+            if isinstance(
+                result, (SolarEdgePortalError, aiohttp.ClientError, TimeoutError)
+            ):
+                _LOGGER.debug("SolarEdge battery %s settings read is unavailable", name)
+                payloads.append(None)
+            elif isinstance(result, BaseException):
+                raise result
+            else:
+                payloads.append(result)
+        return parse_battery_configuration(
+            payloads[0], payloads[1], time_zone=self._time_zone
         )
 
     @property

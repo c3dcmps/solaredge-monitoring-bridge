@@ -18,6 +18,9 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from custom_components.solaredge_one_bridge.battery_configuration_sensor import (
+    async_setup_battery_configuration_sensors,
+)
 from custom_components.solaredge_one_bridge.const import (
     CONF_MODE,
     CONF_TIME_ZONE,
@@ -133,6 +136,7 @@ async def async_setup_entry(
         )
     await async_setup_ev_sensors(hass, entry, async_add_entities)
     await async_setup_ev_schedule_sensors(hass, entry, async_add_entities)
+    await async_setup_battery_configuration_sensors(hass, entry, async_add_entities)
 
 
 def _diagnostic_attributes(

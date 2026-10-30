@@ -94,6 +94,44 @@ must not be interpreted as total purchased energy. Use **Grid import energy
 today** for total imported energy. Both sensors share the same daily request,
 so this breakdown adds no network calls.
 
+### Read-only battery configuration (portal mode)
+
+Four additional sensors read the same settings as mySolarEdge:
+
+| Sensor | Value and attributes |
+| --- | --- |
+| Battery mode | Provider mode code, for example `MANUAL_TOU` or `MSC` |
+| Battery backup reserve | Requested backup reserve in percent; minimum reserve, view/edit capabilities and Weather Guard configuration/status as attributes |
+| Battery manual schedules | Configured window count, with months, weekdays, start/end clocks and `CHARGING`, `DISCHARGING` or `PAUSE` actions |
+| Battery tariff schedules | Stored tariff window count, with months, weekdays and start/end clocks |
+
+Settings are fetched at setup and every **five minutes** through two authenticated
+read-only requests: `batteryMode` and `getBatteries?triggerHF=false`. They reuse the
+existing portal session and do not change battery operation or request faster reporting.
+Power readings and EV controls keep their existing polling intervals. One failed
+settings endpoint does not hide the other endpoint's valid fields.
+
+Both programs remain visible when another mode is selected. Program attributes include
+`selected_mode`, `program_type` and `selected`; selection is interpreted only for the
+confirmed `MANUAL_TOU` and `MSC` codes, and is unknown for other provider modes.
+Raw bounded uppercase mode codes are preserved, including future modes. A configured
+program does not prove that charging/discharging is physically occurring. An explicit
+window `enable: false` is retained, while an absent activation flag remains unknown.
+
+Schedules use the configured site timezone; `24:00` denotes the end of a day. Overnight
+windows are retained without calculating future occurrences. Missing/invalid programs
+are unavailable, while an explicit empty program has count zero. Program counts and
+configured reserve setpoints do not produce energy or measurement statistics.
+
+`last_checked` is the retrieval timestamp; `configuration_updated_at` is SolarEdge's
+separate settings-change timestamp when supplied. Backup reserve is the configured
+`userBackupReserveValue`, **not** the instantaneous state of charge or `backupMinSOE`.
+A nonzero reserve and a backup-capable flag do not establish whether backup is enabled
+or the house is operating off-grid; these responses do not provide that explicit state.
+No backup-enabled state is invented. No raw device IDs, serials or credentials are exposed.
+
+This version does not edit modes, reserves, programs, tariff plans or Weather Guard.
+
 ### EV chargers (portal mode)
 
 The integration discovers EV chargers visible through the site's private

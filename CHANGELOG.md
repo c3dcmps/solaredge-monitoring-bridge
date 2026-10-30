@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-10-30
+
+- Add read-only battery mode, backup reserve, manual program and tariff program sensors.
+- Read battery settings every five minutes independently of power and EV telemetry.
+- Preserve stored inactive programs, explicit disabled windows and unknown activation flags.
+- Expose normalized calendars, retrieval/settings timestamps and Weather Guard metadata.
+- Keep endpoint failures isolated and do not infer backup activation or physical battery behavior.
+
 ## 0.1.4 — 2026-10-21
 
 - Isolate SolarEdge portal login cookies in a dedicated session per config entry,
