@@ -14,6 +14,9 @@ from homeassistant.helpers.aiohttp_client import (
 )
 from homeassistant.util import dt as dt_util
 
+from custom_components.solaredge_one_bridge.battery_configuration_sensor import (
+    SolarEdgeBatteryConfigurationCoordinator,
+)
 from custom_components.solaredge_one_bridge.ev_coordinator import SolarEdgeEVCoordinator
 from custom_components.solaredge_one_bridge.ev_schedule_sensor import (
     SolarEdgeEVScheduleCoordinator,
@@ -113,6 +116,11 @@ async def async_setup_entry(
         )
         coordinator.ev_schedule_coordinator = schedule_coordinator
         await schedule_coordinator.async_refresh()
+        battery_coordinator = SolarEdgeBatteryConfigurationCoordinator(
+            hass, entry, portal_client
+        )
+        coordinator.battery_configuration_coordinator = battery_coordinator
+        await battery_coordinator.async_refresh()
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

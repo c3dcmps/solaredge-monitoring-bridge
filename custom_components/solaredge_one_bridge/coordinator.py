@@ -11,6 +11,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from custom_components.solaredge_one_bridge.battery_configuration_sensor import (
+    SolarEdgeBatteryConfigurationCoordinator,
+)
 from custom_components.solaredge_one_bridge.ev_coordinator import SolarEdgeEVCoordinator
 from custom_components.solaredge_one_bridge.ev_schedule_sensor import (
     SolarEdgeEVScheduleCoordinator,
@@ -55,6 +58,9 @@ class SolarEdgeBridgeCoordinator(DataUpdateCoordinator[SolarEdgeSnapshot]):
         self._client = client
         self.ev_coordinator: SolarEdgeEVCoordinator | None = None
         self.ev_schedule_coordinator: SolarEdgeEVScheduleCoordinator | None = None
+        self.battery_configuration_coordinator: (
+            SolarEdgeBatteryConfigurationCoordinator | None
+        ) = None
 
     async def _async_update_data(self) -> SolarEdgeSnapshot:
         try:

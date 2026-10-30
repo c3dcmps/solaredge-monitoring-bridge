@@ -221,6 +221,26 @@ class SolarEdgePortalClient:
             ),
         }
 
+    async def battery_configuration(self) -> Any:
+        """Read the configured battery mode and stored programs."""
+        await self._ensure_login()
+        return await self._authenticated_get(
+            "battery configuration",
+            f"/storage/{self.config.site_id}/batteryMode",
+            None,
+            device_list=True,
+        )
+
+    async def battery_reserve(self) -> Any:
+        """Read reserve metadata without requesting high-frequency battery reporting."""
+        await self._ensure_login()
+        return await self._authenticated_get(
+            "battery reserve",
+            f"/storage/{self.config.site_id}/getBatteries",
+            [("triggerHF", "false")],
+            device_list=True,
+        )
+
     async def set_ev_charging(self, key: str, *, charging: bool) -> None:
         """Submit a specific EV request without retrying an ambiguous write.
 

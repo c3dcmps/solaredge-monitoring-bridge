@@ -212,6 +212,8 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
     ev_factory = Mock(return_value=ev_coordinator)
     schedule_coordinator = types.SimpleNamespace(async_refresh=AsyncMock())
     schedule_factory = Mock(return_value=schedule_coordinator)
+    battery_coordinator = types.SimpleNamespace(async_refresh=AsyncMock())
+    battery_factory = Mock(return_value=battery_coordinator)
     hass = types.SimpleNamespace(
         config_entries=types.SimpleNamespace(async_forward_entry_setups=AsyncMock())
     )
@@ -239,6 +241,7 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
         SolarEdgeBridgeCoordinator=coordinator_factory,
         SolarEdgeEVCoordinator=ev_factory,
         SolarEdgeEVScheduleCoordinator=schedule_factory,
+        SolarEdgeBatteryConfigurationCoordinator=battery_factory,
         async_create_clientsession=create_session,
         async_get_clientsession=shared_session,
         ConfigEntryNotReady=ConfigEntryNotReady,
@@ -254,6 +257,8 @@ def test_setup_resolves_zone_before_first_coordinator_refresh(valid_zone) -> Non
         assert entry.runtime_data is coordinator
         assert coordinator.ev_coordinator is ev_coordinator
         assert coordinator.ev_schedule_coordinator is schedule_coordinator
+        assert coordinator.battery_configuration_coordinator is battery_coordinator
+        battery_coordinator.async_refresh.assert_awaited_once()
         schedule_coordinator.async_refresh.assert_awaited_once()
         ev_coordinator.async_refresh.assert_awaited_once()
         coordinator.async_config_entry_first_refresh.assert_awaited_once()

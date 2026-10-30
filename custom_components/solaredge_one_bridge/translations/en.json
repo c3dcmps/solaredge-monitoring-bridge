@@ -153,6 +153,18 @@
       },
       "ev_next_scheduled_charge": {
         "name": "Next scheduled charge"
+      },
+      "battery_operating_mode": {
+        "name": "Battery mode"
+      },
+      "battery_backup_reserve": {
+        "name": "Battery backup reserve"
+      },
+      "battery_manual_schedules": {
+        "name": "Battery manual schedules"
+      },
+      "battery_tariff_schedules": {
+        "name": "Battery tariff schedules"
       }
     },
     "button": {
