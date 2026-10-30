@@ -105,3 +105,14 @@ Adapter `async_get_battery_configuration()` returns the typed snapshot from Task
   for this implementation plan; it implements the four-capteur interface just approved.
 - Pre-flight: Task 2 produces typed snapshots consumed by Task 3; signatures agree.
 - Base: clean origin/main 564e3cd; isolated branch feat/battery-configuration-readonly.
+- Tasks 1–3 complete in c498934: 50 added behavior cases, suite 260 + 6 subtests passed.
+- Parser TDD: 38 cases failed on missing module, then all passed; seven client cases failed
+  on missing methods / malformed nested action, then passed; five entity cases failed
+  on missing sensor module, then passed.
+- Ruling: preserve bounded uppercase provider mode codes instead of guessing undocumented
+  enum translations. Selection is known for confirmed MSC/MANUAL_TOU only; other codes
+  retain the mode value and leave program selection unknown.
+- Test boundary repair: defer the parser test helper import to avoid reloading portal error
+  classes during pytest collection; update existing AST harness globals for new setup calls.
+- Ruff, formatting, complexity <=8, targeted ty and privacy scan passed before review.
+- Independent review requested against c498934 in a separate detached worktree.
