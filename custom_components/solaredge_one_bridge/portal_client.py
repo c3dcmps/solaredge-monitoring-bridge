@@ -149,7 +149,9 @@ class SolarEdgePortalSnapshotClient:
         )
         payloads = []
         for name, result in zip(("mode", "reserve"), results, strict=True):
-            if isinstance(result, SolarEdgePortalError):
+            if isinstance(
+                result, (SolarEdgePortalError, aiohttp.ClientError, TimeoutError)
+            ):
                 _LOGGER.debug("SolarEdge battery %s settings read is unavailable", name)
                 payloads.append(None)
             elif isinstance(result, BaseException):

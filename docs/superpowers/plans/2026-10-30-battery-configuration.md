@@ -116,3 +116,7 @@ Adapter `async_get_battery_configuration()` returns the typed snapshot from Task
   classes during pytest collection; update existing AST harness globals for new setup calls.
 - Ruff, formatting, complexity <=8, targeted ty and privacy scan passed before review.
 - Independent review requested against c498934 in a separate detached worktree.
+- Review P2 reproduced with four failing tests: truncated response bodies and body
+  timeouts in either endpoint masked the successful endpoint. Adapter now isolates
+  aiohttp.ClientError/TimeoutError alongside portal errors; cancellations and programming
+  errors still propagate. No transport behavior outside battery settings was changed.
