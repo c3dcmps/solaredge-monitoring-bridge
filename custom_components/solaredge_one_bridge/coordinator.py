@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -26,6 +26,11 @@ from .client import (
 from .const import DEFAULT_UPDATE_INTERVAL, DOMAIN
 from .model import SolarEdgeSnapshot
 from .portal import SolarEdgePortalAuthenticationError, SolarEdgePortalError
+
+if TYPE_CHECKING:
+    from custom_components.solaredge_one_bridge.battery_charge_services import (
+        BatteryChargeRuntime,
+    )
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +61,7 @@ class SolarEdgeBridgeCoordinator(DataUpdateCoordinator[SolarEdgeSnapshot]):
             update_interval=update_interval,
         )
         self._client = client
+        self.battery_charge: BatteryChargeRuntime | None = None
         self.ev_coordinator: SolarEdgeEVCoordinator | None = None
         self.ev_schedule_coordinator: SolarEdgeEVScheduleCoordinator | None = None
         self.battery_configuration_coordinator: (

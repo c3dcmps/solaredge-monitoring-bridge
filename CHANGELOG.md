@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.0 — 2026-11-01
+
+- Add actions to schedule and cancel one temporary manual battery charging window.
+- Preserve existing settings and use quarter-hour intervals on all days and months.
+- Persist intent before a single write and confirm storage and provider readback.
+- Remove the window after its end, with restart recovery and one-minute cleanup retries.
+- Report uncertain writes, offline cleanup and app conflicts through persistent notifications.
+- Refuse mode changes, capacity/overlap conflicts and unsupported calendar/time cases.
+
 ## 0.6.0 — 2026-10-30
 
 - Add read-only battery mode, backup reserve, manual program and tariff program sensors.

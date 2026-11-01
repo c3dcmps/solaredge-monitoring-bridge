@@ -162,6 +162,17 @@ class SolarEdgePortalSnapshotClient:
             payloads[0], payloads[1], time_zone=self._time_zone
         )
 
+    async def async_read_battery_program(self) -> dict[str, Any]:
+        """Read fresh full settings for conflict checks."""
+        payload = await self._portal.battery_configuration()
+        if not isinstance(payload, dict):
+            raise SolarEdgePortalError("Battery settings response is invalid")
+        return payload
+
+    async def async_write_battery_program(self, configuration: dict[str, Any]) -> None:
+        """Send a single preserved battery program through the existing session."""
+        await self._portal.set_battery_configuration(configuration)
+
     @property
     def ev_control_diagnostics(self) -> dict[str, bool]:
         """Return only session-readiness flags for EV diagnostics."""

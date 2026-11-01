@@ -12,7 +12,7 @@ It supports two connection methods:
 
 - **SolarEdge monitoring portal (experimental):** logs in directly with any
   SolarEdge monitoring account that can access the site and a numeric site ID;
-  the account does not need to own the site for monitoring. Manual EV charging
+  the account does not need to own the site for monitoring. Manual EV and temporary battery charging
   commands require the account to have the corresponding SolarEdge permissions.
 - **Local snapshot bridge:** consumes the documented protocol in
   [docs/snapshot-protocol.md](docs/snapshot-protocol.md).
@@ -39,7 +39,7 @@ From that access, the integration exposes:
 
 If you have official API credentials or local Modbus access, those documented
 connection methods remain preferable for monitoring. The portal connection also
-provides the native SolarEdge manual EV charging actions.
+provides native SolarEdge EV actions and temporary battery charging schedules.
 
 ## Entities
 
@@ -130,7 +130,64 @@ A nonzero reserve and a backup-capable flag do not establish whether backup is e
 or the house is operating off-grid; these responses do not provide that explicit state.
 No backup-enabled state is invented. No raw device IDs, serials or credentials are exposed.
 
-This version does not edit modes, reserves, programs, tariff plans or Weather Guard.
+These sensors remain read-only. The actions below can add and remove an owned manual
+charging window; they never change modes, reserves, tariff plans or Weather Guard.
+
+### Temporary battery charge (portal actions)
+
+In **Developer tools → Actions**, use `solaredge_one_bridge.schedule_battery_charge`:
+
+```yaml
+action: solaredge_one_bridge.schedule_battery_charge
+data:
+  start: "2030-01-15T23:15:00+01:00"
+  end: "2030-01-15T23:30:00+01:00"
+```
+
+Replace the example with future ISO datetimes including timezone offsets. Times are interpreted
+in the configured site timezone and must be exact quarter hours, on the same local day, ending
+within 24 hours. Cross-midnight intervals and ambiguous daylight-saving times are refused.
+The site must already use `MANUAL_TOU`; this action does not switch operating modes.
+It refuses an existing temporary operation, three existing manual windows, any overlap,
+disabled or unrecognized manual windows, and unverified settings. All existing windows count,
+even on other weekdays or months, because the new window covers **all days and all months**.
+Restricted calendars are not used for temporary commands; their execution has not been validated.
+
+The action reads fresh complete settings, durably saves original/proposed writable configurations,
+sends **one PUT**, then verifies by a fresh GET. This confirms the stored program, not physical
+charging. SolarEdge determines charging power, charge limits and the energy source. A solar
+surplus can also charge the battery. There is no SoC target or general battery stop command.
+Existing schedules, mode, reserve and tariffs are preserved; the service does not check tariffs
+or restrict the interval to off-peak hours. Choose an appropriate interval yourself.
+
+SolarEdge handles the end of the native interval independently of HA; a delay of around a minute
+has been observed. HA waits two minutes after the requested end before removing the recurring
+window, then retries cleanup every minute while necessary. This one-minute timer makes no
+network request when there is no overdue or unverified operation. A saved operation resumes after restart.
+It is bound to the configured site and validated against the configured timezone before use.
+No automatic addition retry is made if the response is interrupted or ambiguous.
+
+To cancel before or during the interval, use:
+
+```yaml
+action: solaredge_one_bridge.cancel_battery_charge
+```
+
+Cancellation removes the owned schedule if settings still match. It does not inhibit other
+native schedules or solar charging, and physical reaction can be delayed. A remote app change
+causes a conflict notification instead of overwriting settings. Inspect the app, remove the
+temporary interval, save, then retry cancellation to clear ownership without reverting
+your other changes. Clearing ownership after a conflict requires a valid fresh manual program
+with no window overlapping the temporary interval on any day or month. Normal calendar-list reordering is ignored; other differences remain conflicts.
+There is no atomic compare-and-swap API, so avoid simultaneous edits in mySolarEdge while
+an action is being submitted.
+
+**An Internet outage, unloaded integration or stopped HA can leave the window recurring daily.**
+The saved operation is retained, a persistent notification reports cleanup failures/conflicts,
+and removal is retried when the integration is available. On unload with a pending operation,
+a notification asks you to reload or remove the window in mySolarEdge. Do not remove the
+integration while a temporary window is pending. Storage loss/corruption can require manual
+cleanup in the app. The local snapshot bridge does not provide these actions.
 
 ### EV chargers (portal mode)
 
@@ -248,20 +305,23 @@ from diagnostics and never become entity state or attributes.
 The client is deliberately constrained:
 
 - authentication is sent only to exact SolarEdge login and monitoring hosts;
-- only fixed dashboard/device-list endpoints and the specific EV activation endpoint
-  are used;
+- only fixed dashboard/device-list, EV activation and battery settings endpoints are used;
 - cross-host login forms, redirects, embedded URL credentials, and unsafe
   redirects are rejected;
 - responses are bounded before parsing;
 - one authentication retry is allowed after a rejected session;
 - provider responses are recursively stripped of common secret and identifying
   fields before normalization; and
-- Home Assistant retains only the aggregate snapshot and EV field allowlists.
+- sensor states retain only the aggregate, EV and battery settings allowlists.
+  A pending temporary battery operation additionally stores its writable original/proposed
+  programs and interval privately on disk, without response metadata or credentials.
 
-The only control operation sends the fixed manual start/stop body to the configured
+EV control sends the fixed manual start/stop body to the configured
 site's EV activation endpoint on `monitoring.solaredge.com`. Raw reporter IDs are
 resolved transiently for that request and never become sensor/button attributes or
-diagnostics. Control errors do not include provider response bodies or tokens.
+diagnostics. Temporary battery control uses only the configured site’s `batteryMode` endpoint.
+Control errors do not include provider response bodies or tokens. Authentication can be
+refreshed before a control write; control PUTs are never replayed after a rejection.
 
 The integration polls every five minutes by default. Do not lower the interval
 unnecessarily; the portal is not a documented public API.

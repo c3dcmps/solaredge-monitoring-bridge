@@ -23,9 +23,12 @@ spec = importlib.util.spec_from_file_location(
     f"{PACKAGE}.portal", COMPONENT / "portal.py"
 )
 assert spec and spec.loader
-portal_module = importlib.util.module_from_spec(spec)
-sys.modules[spec.name] = portal_module
-spec.loader.exec_module(portal_module)
+if spec.name in sys.modules:
+    portal_module = sys.modules[spec.name]
+else:
+    portal_module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = portal_module
+    spec.loader.exec_module(portal_module)
 
 SolarEdgePortalAuthenticationError = portal_module.SolarEdgePortalAuthenticationError
 SolarEdgePortalClient = portal_module.SolarEdgePortalClient

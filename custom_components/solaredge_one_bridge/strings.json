@@ -175,5 +175,25 @@
         "name": "Stop charging"
       }
     }
+  },
+  "services": {
+    "schedule_battery_charge": {
+      "name": "Schedule temporary battery charge",
+      "description": "Add a future same-day charging window in MANUAL_TOU. The window repeats daily until automatic cleanup; an Internet outage can delay removal.",
+      "fields": {
+        "start": {
+          "name": "Start",
+          "description": "ISO datetime with timezone offset, on a quarter hour, in the future."
+        },
+        "end": {
+          "name": "End",
+          "description": "ISO datetime with timezone offset, on the same local day, within 24 hours."
+        }
+      }
+    },
+    "cancel_battery_charge": {
+      "name": "Cancel temporary battery charge",
+      "description": "Remove the owned temporary window if settings have not changed. Native schedules and solar charging can still request charge."
+    }
   }
 }

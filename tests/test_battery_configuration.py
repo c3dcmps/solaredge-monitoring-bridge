@@ -40,6 +40,7 @@ def _program(*intervals, manual=False):
 def _mode():
     return _envelope(
         batteryMode="MANUAL_TOU",
+        smartPredictionEnabled=None,
         touConfiguration=_program((420, 720), (1020, 1380)),
         manualTouConfiguration={
             "touConfiguration": _program((960, 1020), (300, 375), manual=True)
