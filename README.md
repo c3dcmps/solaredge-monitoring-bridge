@@ -163,7 +163,7 @@ or restrict the interval to off-peak hours. Choose an appropriate interval yours
 SolarEdge handles the end of the native interval independently of HA; a delay of around a minute
 has been observed. HA waits two minutes after the requested end before removing the recurring
 window, then retries cleanup every minute while necessary. This one-minute timer makes no
-network request when there is no overdue operation. A saved operation resumes after restart.
+network request when there is no overdue or unverified operation. A saved operation resumes after restart.
 It is bound to the configured site and validated against the configured timezone before use.
 No automatic addition retry is made if the response is interrupted or ambiguous.
 

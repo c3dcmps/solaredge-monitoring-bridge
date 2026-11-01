@@ -41,13 +41,13 @@ MANUAL_TOU only, no reserve changes. SolarEdge controls the physical end, with o
 
 ## Tasks
 
-- [ ] Add tests for pure calendar planning, preservation, refusals and semantic comparison;
+- [x] Add tests for pure calendar planning, preservation, refusals and semantic comparison;
   run red; implement `battery_charge_schedule.py`; run green.
-- [ ] Test durable manager with fake external boundaries: add/cancel, ambiguous write, offline,
+- [x] Test durable manager with fake external boundaries: add/cancel, ambiguous write, offline,
   conflict, crash recovery, persistence failure, serialization; implement `battery_charge.py`.
-- [ ] Add fixed-origin raw-config GET/PUT transport using current bearer, bounded envelope
+- [x] Add fixed-origin raw-config GET/PUT transport using current bearer, bounded envelope
   validation, no redirect or retry; test rejection, interrupted responses and privacy.
-- [ ] Wire HA Store, one-minute recovery, visible notifications, service schemas/translations,
+- [x] Wire HA Store, one-minute recovery, visible notifications, service schemas/translations,
   setup/unload and refresh; test framework boundaries and service targeting.
 - [ ] Document usage and limits, run relevant and regression tests, Ruff, targeted ty, privacy;
   independent review before integration. Prepare PR for review; no physical command.
@@ -65,3 +65,10 @@ MANUAL_TOU only, no reserve changes. SolarEdge controls the physical end, with o
 - Ruling: after an app conflict, cancellation can acknowledge a verified manual removal if
   no current manual window overlaps the owned interval on any calendar. Clear only local
   ownership, without any remote PUT; preserve all other app changes. Tested red then green.
+
+- Independent review found three P2 issues, reproduced with failing tests: incomplete
+  configuration acceptance, stopping cleanup on a failed platform unload, and clearing
+  unresolved warnings at restart. Require every writable key, stop only after successful
+  unload, and reconcile restored intent by fresh GET before clearing warnings.
+- A queued recovery race was reproduced and fixed by evaluating deadlines under the same
+  manager lock as scheduling/cancellation. Tests cover a new operation queued behind cancel.

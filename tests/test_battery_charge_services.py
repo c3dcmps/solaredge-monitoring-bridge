@@ -168,3 +168,22 @@ def test_silent_storage_write_failure_prevents_remote_command():
         assert b.writes == []
 
     asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("unloaded", [False, True])
+def test_failed_platform_unload_does_not_stop_the_cleanup_runtime(unloaded):
+    async def exercise():
+        module = _load_boundary("__init__.py")
+        runtime = SimpleNamespace(async_stop=AsyncMock())
+        entry = SimpleNamespace(runtime_data=SimpleNamespace(battery_charge=runtime))
+        services = SimpleNamespace(
+            async_unload_platforms=AsyncMock(return_value=unloaded)
+        )
+        module["PLATFORMS"] = ["sensor", "button"]
+        result = await module["async_unload_entry"](
+            SimpleNamespace(config_entries=services), entry
+        )
+        assert result is unloaded
+        assert runtime.async_stop.await_count == int(unloaded)
+
+    asyncio.run(exercise())

@@ -155,3 +155,20 @@ def test_tomorrow_interval_that_would_also_run_today_across_dst_is_refused():
     end = start + timedelta(minutes=15)
     with pytest.raises(ValueError, match="earlier"):
         planner.plan_charge(_mode(), start=start, end=end, now=now, time_zone=ZONE)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "batteryMode",
+        "manualTouConfiguration",
+        "touConfiguration",
+        "smartPredictionEnabled",
+    ],
+)
+def test_missing_writable_field_refuses_partial_put(field):
+    payload = _mode()
+    payload["smartPredictionEnabled"] = None
+    payload.pop(field)
+    with pytest.raises(ValueError, match="[Cc]omplete"):
+        plan(payload)

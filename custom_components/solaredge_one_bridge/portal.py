@@ -249,7 +249,7 @@ class SolarEdgePortalClient:
         }
         if (
             not isinstance(configuration, dict)
-            or set(configuration) - allowed
+            or set(configuration) != allowed
             or configuration.get("batteryMode") != "MANUAL_TOU"
             or not isinstance(configuration.get("manualTouConfiguration"), dict)
         ):

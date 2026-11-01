@@ -151,10 +151,11 @@ async def async_unload_entry(
     hass: HomeAssistant, entry: SolarEdgeBridgeConfigEntry
 ) -> bool:
     """Unload a bridge config entry."""
+    unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     runtime = entry.runtime_data.battery_charge
-    if runtime is not None:
+    if unloaded and runtime is not None:
         await runtime.async_stop()
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    return unloaded
 
 
 async def _async_update_listener(

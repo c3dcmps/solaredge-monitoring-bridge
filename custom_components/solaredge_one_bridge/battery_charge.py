@@ -72,6 +72,7 @@ class TemporaryBatteryCharge:
             self.issue = "invalid_record"
             return
         self.pending = deepcopy(record)
+        self.issue = "write_uncertain"
 
     def _validate_record(self, record: Any) -> None:
         if not isinstance(record, dict) or set(record) != {
@@ -180,15 +181,53 @@ class TemporaryBatteryCharge:
 
     async def recover(self) -> None:
         """Retry overdue cleanup without repeating addition."""
-        if self._invalid_record or self.pending is None:
-            return
-        deadline = datetime.fromisoformat(self.pending["end"]) + timedelta(minutes=2)
-        if self._now() < deadline:
+        async with self._lock:
+            if self._invalid_record or self.pending is None:
+                return
+            deadline = datetime.fromisoformat(self.pending["end"]) + timedelta(
+                minutes=2
+            )
+            if self._now() < deadline:
+                await self._reconcile_future()
+                return
+            try:
+                await self._cleanup()
+            except BatteryChargeError:
+                # _cleanup() preserves ownership and marks the app conflict.
+                return
+            except _RECOVERABLE:
+                self.issue = "cleanup_pending"
+
+    def _removed(self, current: dict[str, Any]) -> bool:
+        record = self.pending
+        if record is None:
+            return True
+        return same_configuration(
+            current, record["before"]
+        ) or temporary_interval_absent(
+            current,
+            start=datetime.fromisoformat(record["start"]),
+            end=datetime.fromisoformat(record["end"]),
+            time_zone=self._time_zone,
+        )
+
+    async def _reconcile_future(self) -> None:
+        if self.issue is None or self.pending is None:
             return
         try:
-            await self.cancel()
-        except BatteryChargeError:
-            # cancel() preserves intent and sets a safe user-facing issue code.
+            current = writable_configuration(
+                await self._client.async_read_battery_program()
+            )
+            if same_configuration(current, self.pending["expected"]):
+                self.issue = None
+            elif self._removed(current):
+                await self._save(None)
+                self.pending = None
+                self.issue = None
+            else:
+                self.issue = "conflict"
+        except _RECOVERABLE:
+            # Keep the unresolved warning and durable intent until fresh verification.
             return
 
     async def _cleanup(self) -> None:
@@ -198,13 +237,7 @@ class TemporaryBatteryCharge:
         current = writable_configuration(
             await self._client.async_read_battery_program()
         )
-        removed = temporary_interval_absent(
-            current,
-            start=datetime.fromisoformat(record["start"]),
-            end=datetime.fromisoformat(record["end"]),
-            time_zone=self._time_zone,
-        )
-        if not removed and not same_configuration(current, record["before"]):
+        if not self._removed(current):
             if not same_configuration(current, record["expected"]):
                 self.issue = "conflict"
                 raise BatteryChargeError(
@@ -216,14 +249,8 @@ class TemporaryBatteryCharge:
             current = writable_configuration(
                 await self._client.async_read_battery_program()
             )
-            removed = temporary_interval_absent(
-                current,
-                start=datetime.fromisoformat(record["start"]),
-                end=datetime.fromisoformat(record["end"]),
-                time_zone=self._time_zone,
-            )
-        if not removed and not same_configuration(current, record["before"]):
-            raise ValueError("Removal not confirmed")
+            if not self._removed(current):
+                raise ValueError("Removal not confirmed")
         await self._save(None)
         self.pending = None
         self.issue = None

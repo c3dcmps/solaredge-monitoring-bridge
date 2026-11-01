@@ -259,3 +259,59 @@ def test_manual_removal_clears_ownership_without_reverting_other_app_changes():
         assert b.remote["batteryMode"] == "MSC"
 
     asyncio.run(exercise())
+
+
+def test_overdue_recovery_never_cancels_a_new_operation_queued_after_old_cancel():
+    async def exercise():
+        b = Boundary()
+        manager = b.manager()
+        await manager.schedule(start=START, end=END)
+        b.clock = END + timedelta(minutes=3)
+        entered, release = asyncio.Event(), asyncio.Event()
+        original = b.read
+
+        async def blocked_read():
+            entered.set()
+            await release.wait()
+            return await original()
+
+        manager._client.async_read_battery_program = blocked_read
+        cancel = asyncio.create_task(manager.cancel())
+        await entered.wait()
+        new = asyncio.create_task(
+            manager.schedule(
+                start=START + timedelta(days=1), end=END + timedelta(days=1)
+            )
+        )
+        await asyncio.sleep(0)
+        recovery = asyncio.create_task(manager.recover())
+        await asyncio.sleep(0)
+        release.set()
+        await asyncio.gather(cancel, new, recovery)
+        assert len(b.writes) == 3
+        assert manager.pending is not None
+
+    asyncio.run(exercise())
+
+
+def test_restored_future_uncertainty_is_verified_before_dismissing_warning():
+    async def exercise():
+        b = Boundary()
+        await b.manager().schedule(start=START, end=END)
+        manager = b.manager()
+        manager.restore(b.record)
+        assert manager.issue == "write_uncertain"
+        b.fail_read = True
+        await manager.recover()
+        assert manager.issue == "write_uncertain" and b.record
+        b.fail_read = False
+        b.remote["smartPredictionEnabled"] = True
+        await manager.recover()
+        assert manager.issue == "conflict" and b.record
+        b.remote["manualTouConfiguration"]["touConfiguration"][
+            "ownerConfiguration"
+        ].pop()
+        await manager.recover()
+        assert manager.issue is None and b.record is None and len(b.writes) == 1
+
+    asyncio.run(exercise())

@@ -31,11 +31,14 @@ def writable_configuration(payload: dict[str, Any]) -> dict[str, Any]:
     """Copy writable fields only, rejecting failed provider envelopes."""
     if (
         payload.get("status") != "PASSED"
+        or type(payload.get("httpStatus")) is not int
         or payload.get("httpStatus") != 200
         or payload.get("errorMessages") != []
     ):
         raise ValueError("Battery configuration response was not validated")
-    return deepcopy({key: payload[key] for key in WRITABLE_FIELDS if key in payload})
+    if not all(key in payload for key in WRITABLE_FIELDS):
+        raise ValueError("Complete battery configuration is required")
+    return deepcopy({key: payload[key] for key in WRITABLE_FIELDS})
 
 
 def _normalized(value: Any, path: str = "") -> Any:

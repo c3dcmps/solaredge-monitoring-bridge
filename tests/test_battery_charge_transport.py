@@ -114,3 +114,29 @@ def test_interrupted_write_response_is_never_retried(error):
         assert len(session.calls) == 1
 
     asyncio.run(exercise())
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "batteryMode",
+        "manualTouConfiguration",
+        "touConfiguration",
+        "smartPredictionEnabled",
+    ],
+)
+def test_transport_refuses_missing_writable_fields_without_network(field):
+    async def exercise():
+        from datetime import UTC
+
+        session = _Session([])
+        client = SolarEdgePortalClient(
+            SolarEdgePortalConfig("u", "p", "123", UTC), session=session
+        )
+        _, expected = plan()
+        expected.pop(field)
+        with pytest.raises(ValueError):
+            await client.set_battery_configuration(expected)
+        assert session.calls == []
+
+    asyncio.run(exercise())
