@@ -49,7 +49,7 @@ MANUAL_TOU only, no reserve changes. SolarEdge controls the physical end, with o
   validation, no redirect or retry; test rejection, interrupted responses and privacy.
 - [x] Wire HA Store, one-minute recovery, visible notifications, service schemas/translations,
   setup/unload and refresh; test framework boundaries and service targeting.
-- [ ] Document usage and limits, run relevant and regression tests, Ruff, targeted ty, privacy;
+- [x] Document usage and limits, run relevant and regression tests, Ruff, targeted ty, privacy;
   independent review before integration. Prepare PR for review; no physical command.
 
 ## Execution ledger
@@ -72,3 +72,11 @@ MANUAL_TOU only, no reserve changes. SolarEdge controls the physical end, with o
   unload, and reconcile restored intent by fresh GET before clearing warnings.
 - A queued recovery race was reproduced and fixed by evaluating deadlines under the same
   manager lock as scheduling/cancellation. Tests cover a new operation queued behind cancel.
+
+## Final verification
+
+320 tests and 6 subtests passed. Ruff, formatting, new-module complexity <=8, targeted
+non-HA ty and privacy scans passed. Independent review of 6c41b24 reported no remaining
+findings after its own full suite run. Framework behavior is tested with boundary doubles;
+real HA import/action registration will be checked after the authorized release update.
+No physical charge action is part of deployment validation.
