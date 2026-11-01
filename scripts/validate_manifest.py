@@ -37,8 +37,8 @@ def main() -> int:
         raise ValueError("manifest domain does not match component directory")
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?", data["version"]):
         raise ValueError("manifest version is not SemVer-shaped")
-    if data["iot_class"] != "local_polling":
-        raise ValueError("bridge integration must remain local_polling")
+    if data["iot_class"] != "cloud_polling":
+        raise ValueError("portal-supported integration must use cloud_polling")
     print("Manifest validation passed")
     return 0
 

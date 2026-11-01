@@ -80,3 +80,7 @@ non-HA ty and privacy scans passed. Independent review of 6c41b24 reported no re
 findings after its own full suite run. Framework behavior is tested with boundary doubles;
 real HA import/action registration will be checked after the authorized release update.
 No physical charge action is part of deployment validation.
+
+- The offline manifest gate still required local_polling although the integration and its
+  existing repository contract use cloud_polling. Reproduced its failure and corrected
+  that stale expectation; manifest validation now passes. Workflow files unchanged.
