@@ -231,6 +231,59 @@ class SolarEdgePortalClient:
             device_list=True,
         )
 
+    async def set_battery_configuration(self, configuration: dict[str, Any]) -> None:
+        """Write a preserved program once, refusing redirects and failed envelopes.
+
+        Args:
+            configuration: Complete writable settings for an existing MANUAL_TOU site.
+
+        Raises:
+            SolarEdgePortalError: If transport or provider confirmation fails.
+            ValueError: If unsupported writable fields or a mode change are requested.
+        """
+        allowed = {
+            "batteryMode",
+            "manualTouConfiguration",
+            "touConfiguration",
+            "smartPredictionEnabled",
+        }
+        if (
+            not isinstance(configuration, dict)
+            or set(configuration) - allowed
+            or configuration.get("batteryMode") != "MANUAL_TOU"
+            or not isinstance(configuration.get("manualTouConfiguration"), dict)
+        ):
+            raise ValueError("Battery configuration write is invalid")
+        await self._ensure_login()
+        try:
+            response = await self._request(
+                "PUT",
+                f"{_DEVICES_BASE_URL}/storage/{self.config.site_id}/batteryMode",
+                json_body=configuration,
+                headers=self._auth_headers(),
+                allow_redirects=False,
+            )
+            async with response:
+                if response.status != 200:
+                    raise SolarEdgePortalError(
+                        "Battery settings write was not confirmed"
+                    )
+                body = await self._read_json(response, "battery settings command")
+                if (
+                    not isinstance(body, dict)
+                    or body.get("status") != "PASSED"
+                    or type(body.get("httpStatus")) is not int
+                    or body.get("httpStatus") != 200
+                    or body.get("errorMessages") != []
+                ):
+                    raise SolarEdgePortalError(
+                        "Battery settings provider validation failed"
+                    )
+        except (TimeoutError, aiohttp.ClientError):
+            raise SolarEdgePortalError(
+                "Battery settings write was interrupted"
+            ) from None
+
     async def battery_reserve(self) -> Any:
         """Read reserve metadata without requesting high-frequency battery reporting."""
         await self._ensure_login()

@@ -14,6 +14,10 @@ from homeassistant.helpers.aiohttp_client import (
 )
 from homeassistant.util import dt as dt_util
 
+from custom_components.solaredge_one_bridge.battery_charge_services import (
+    BatteryChargeRuntime,
+    async_register_battery_charge_services,
+)
 from custom_components.solaredge_one_bridge.battery_configuration_sensor import (
     SolarEdgeBatteryConfigurationCoordinator,
 )
@@ -46,6 +50,12 @@ from .portal_client import SolarEdgePortalSnapshotClient
 PLATFORMS = [Platform.SENSOR, Platform.BUTTON]
 
 SolarEdgeBridgeConfigEntry = ConfigEntry[SolarEdgeBridgeCoordinator]
+
+
+async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    """Register battery actions independently of entry availability."""
+    async_register_battery_charge_services(hass)
+    return True
 
 
 async def async_setup_entry(
@@ -124,6 +134,16 @@ async def async_setup_entry(
     entry.runtime_data = coordinator
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    if portal_client is not None:
+        runtime = BatteryChargeRuntime(
+            hass,
+            entry,
+            portal_client,
+            time_zone=time_zone,
+            coordinator=battery_coordinator,
+        )
+        coordinator.battery_charge = runtime
+        await runtime.async_start()
     return True
 
 
@@ -131,6 +151,9 @@ async def async_unload_entry(
     hass: HomeAssistant, entry: SolarEdgeBridgeConfigEntry
 ) -> bool:
     """Unload a bridge config entry."""
+    runtime = entry.runtime_data.battery_charge
+    if runtime is not None:
+        await runtime.async_stop()
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
