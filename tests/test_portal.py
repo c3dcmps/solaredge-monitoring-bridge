@@ -35,6 +35,13 @@ SolarEdgePortalClient = portal_module.SolarEdgePortalClient
 SolarEdgePortalConfig = portal_module.SolarEdgePortalConfig
 SolarEdgePortalError = portal_module.SolarEdgePortalError
 
+const_spec = importlib.util.spec_from_file_location(
+    f"{PACKAGE}.const", COMPONENT / "const.py"
+)
+assert const_spec and const_spec.loader
+const_module = importlib.util.module_from_spec(const_spec)
+const_spec.loader.exec_module(const_module)
+
 
 class _Content:
     def __init__(self, body: bytes, chunk_size: int | None = None) -> None:
@@ -131,6 +138,12 @@ class PortalTestCase(unittest.TestCase):
 
 
 class ConfigurationAndLoginTests(PortalTestCase):
+    def test_default_cache_expires_before_the_shortest_poll_interval(self) -> None:
+        config = SolarEdgePortalConfig("u", "p", "1", UTC)
+        self.assertLess(
+            config.cache_ttl_seconds, const_module.MIN_POLL_INTERVAL_SECONDS
+        )
+
     def test_site_id_timezone_and_response_limits_are_validated(self) -> None:
         for site_id in ("../1", "abc", "1?x=2"):
             with self.assertRaises(ValueError):

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 — 2026-11-15
+
+- Lower the minimum polling interval from 60 to 10 seconds.
+- Shorten the portal response cache from 60 to 5 seconds so each poll receives the
+  provider's newest sample while still deduplicating the site and EV coordinators.
+- Document that `observed_at` is the provider's last full report time, not the
+  freshness of the power values.
+
 ## 0.7.0 — 2026-11-01
 
 - Add actions to schedule and cancel one temporary manual battery charging window.
