@@ -72,7 +72,7 @@ The cache is invalidated on the first poll after local midnight, including days
 with daylight-saving changes. Yesterday's values are never displayed as today's;
 missing or failed daily readings are unavailable, not zero. SolarEdge may publish
 measurements with a delay. The actual refresh also depends on the integration's
-polling interval (60 seconds to one hour).
+polling interval (10 seconds to one hour).
 
 These are energy sensors with `total` state class and an explicit `last_reset`
 at local midnight. This identifies a new daily cycle even when an outage spans
@@ -323,8 +323,12 @@ diagnostics. Temporary battery control uses only the configured site’s `batter
 Control errors do not include provider response bodies or tokens. Authentication can be
 refreshed before a control write; control PUTs are never replayed after a rejection.
 
-The integration polls every five minutes by default. Do not lower the interval
-unnecessarily; the portal is not a documented public API.
+The integration polls every five minutes by default. The portal's live power flow
+advertises its own refresh rate (`updateRefreshRate`, typically five seconds), so
+intervals down to ten seconds return fresh values. Faster polling increases request
+volume on an undocumented API; keep it conservative. The `observed_at` attribute is
+the provider's last full report time and can stay around one minute old even when
+the power values are current.
 
 ## Local bridge setup
 

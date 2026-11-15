@@ -131,7 +131,7 @@ class SolarEdgePortalConfig:
     site_id: str
     time_zone: tzinfo
     timeout_seconds: float = 20.0
-    cache_ttl_seconds: float = 60.0
+    cache_ttl_seconds: float = 5.0
     max_response_bytes: int = _MAX_RESPONSE_BYTES
 
     def __post_init__(self) -> None:
